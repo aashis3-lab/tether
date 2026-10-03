@@ -1,0 +1,23 @@
+node_modules
+dist
+dist-ssr
+*.local
+
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+.DS_Store
+*.log
+npm-debug.log*
+
+.vscode/*
+!.vscode/extensions.json
+
+.vercel
+
+supabase/.temp
+
+# TypeScript incremental build caches
+*.tsbuildinfo

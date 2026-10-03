@@ -1,0 +1,307 @@
+import { useEffect, useState, type FormEvent } from 'react'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { useAuth } from '@/auth/AuthProvider'
+import {
+  AUTH_MODE,
+  RESEND_COOLDOWN_S,
+  formatPhone,
+  listenForSmsCode,
+  normalizePhone,
+  sendCode,
+  verifyCode,
+} from '@/auth/phoneAuth'
+import { AlertOverlay } from '@/components/AlertOverlay'
+import { PermissionsFlow } from '@/components/PermissionsPage'
+import { ProfileForm } from '@/components/ProfileForm'
+import { CodeBoxes } from '@/components/CodeBoxes'
+import { CheckIcon } from '@/components/icons'
+import { Button, ErrorText, Field, Screen, Title } from '@/components/ui'
+import { unlockAudio } from '@/lib/sound'
+
+type Step = 'verify' | 'profile' | 'permissions' | 'practiceIntro' | 'practice' | 'done'
+
+const PRACTICE_SECONDS = 20
+
+export function SignUp() {
+  const { userId, profile, authSession, refreshProfile, loading } = useAuth()
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const next = params.get('next') || '/'
+
+  const [step, setStep] = useState<Step>(() => (userId ? 'profile' : 'verify'))
+  const [phone, setPhone] = useState('')
+  const [codeSent, setCodeSent] = useState(false)
+  const [code, setCode] = useState('')
+  const [mockCode, setMockCode] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [resendIn, setResendIn] = useState(0)
+  const [sendCount, setSendCount] = useState(0)
+
+  // Resend countdown.
+  useEffect(() => {
+    if (resendIn <= 0) return
+    const t = window.setTimeout(() => setResendIn((s) => s - 1), 1000)
+    return () => window.clearTimeout(t)
+  }, [resendIn])
+
+  // Android Chrome: fill the code in straight from the incoming SMS. It is
+  // only filled in, the person still taps Verify.
+  useEffect(() => {
+    if (!codeSent || AUTH_MODE !== 'sms') return
+    const ac = new AbortController()
+    void listenForSmsCode(ac.signal).then((c) => {
+      if (c && !ac.signal.aborted) setCode(c)
+    })
+    return () => ac.abort()
+     
+  }, [codeSent, sendCount])
+
+  // Already fully set up and not mid-onboarding -> nothing to do here.
+  if (!loading && profile && step === 'verify') return <Navigate to={next} replace />
+
+  async function requestCode() {
+    unlockAudio()
+    setBusy(true)
+    setError('')
+    setCode('')
+    try {
+      const normalized = normalizePhone(phone)
+      setPhone(formatPhone(normalized))
+      setMockCode(await sendCode(normalized))
+      setCodeSent(true)
+      setResendIn(RESEND_COOLDOWN_S)
+      setSendCount((n) => n + 1)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (!codeSent) return requestCode()
+    return verify(code)
+  }
+
+  async function verify(value: string) {
+    if (busy) return
+    setBusy(true)
+    setError('')
+    try {
+      await verifyCode(normalizePhone(phone), value, mockCode)
+      const existing = await refreshProfile()
+      setStep(existing ? 'done' : 'profile')
+      if (existing) navigate(next, { replace: true })
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const sessionPhone =
+    (phone && normalizePhone(phone)) ||
+    authSession?.user.phone ||
+    (authSession?.user.user_metadata?.phone as string | undefined) ||
+    ''
+
+  return (
+    <Screen className="pt-[max(3rem,env(safe-area-inset-top))]">
+      {step === 'verify' && (
+        <form onSubmit={submit} className="flex flex-1 flex-col">
+          {mockCode && <MockSmsBanner code={mockCode} />}
+          <Title className="mb-6">Verify your phone</Title>
+
+          <Field
+            label="Phone number"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            value={phone}
+            onChange={(e) => {
+              setPhone(e.target.value)
+              if (codeSent) {
+                setCodeSent(false)
+                setMockCode(null)
+              }
+            }}
+            placeholder="+1 (555) 123-4567"
+            required
+            autoFocus
+          />
+
+          {codeSent && (
+            <div className="mt-5">
+              <span className="mb-2 block text-sm font-semibold">SMS code</span>
+              <CodeBoxes value={code} onChange={setCode} autoFocus />
+              <p className="mt-4 flex items-center gap-2 text-sm font-semibold text-accent-pink">
+                <CheckIcon width={18} height={18} />
+                {mockCode ? 'Code received' : `Code sent to ${phone}`}
+              </p>
+              <Button type="button" variant="secondary" className="mt-5" disabled={busy || resendIn > 0} onClick={requestCode}>
+                {resendIn > 0 ? `Send a new code (${resendIn}s)` : 'Send a new code'}
+              </Button>
+            </div>
+          )}
+
+          <div className="mt-5">
+            <ErrorText>{error}</ErrorText>
+          </div>
+
+          <div className="mt-auto pt-10">
+            <Button
+              type="submit"
+              disabled={busy || (codeSent ? code.length !== 6 : phone.replace(/\D/g, '').length < 10)}
+            >
+              {busy ? 'One sec…' : codeSent ? 'Verify' : 'Send code'}
+            </Button>
+            <p className="mt-4 text-center text-sm leading-relaxed text-ink-dim">
+              By continuing, you agree to our Terms and Privacy Policy.
+            </p>
+          </div>
+        </form>
+      )}
+
+      {step === 'profile' && userId && (
+        <div className="flex flex-1 flex-col">
+          <Title className="mb-6">About You</Title>
+          <ProfileForm
+            userId={userId}
+            phone={sessionPhone}
+            submitLabel="Save & continue"
+            onSaved={async () => {
+              await refreshProfile()
+              setStep('permissions')
+            }}
+          />
+        </div>
+      )}
+
+      {step === 'permissions' && <PermissionsFlow onDone={() => setStep('practiceIntro')} />}
+
+      {step === 'practiceIntro' && (
+        <div className="flex flex-1 flex-col">
+          <div className="flex flex-1 flex-col items-center justify-center text-center">
+            <div className="mb-6 flex h-28 w-28 items-center justify-center rounded-full bg-danger text-white">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M7 4.5v15l12-7.5-12-7.5Z" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <h1 className="text-[2rem] font-bold leading-tight tracking-tight">Try it first</h1>
+            <p className="mt-3 max-w-xs text-lg text-ink-dim">
+              A 20-second rehearsal shows a ping, a shared location and how you answer.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 pt-6">
+            <Button big onClick={() => setStep('practice')}>
+              Start 20-second practice
+            </Button>
+            <button onClick={() => navigate(next, { replace: true })} className="min-h-[48px] text-ink-dim">
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 'practice' && (
+        <PracticeAlert onDone={() => navigate(next, { replace: true })} onBack={() => setStep('practiceIntro')} />
+      )}
+    </Screen>
+  )
+}
+
+function MockSmsBanner({ code }: { code: string }) {
+  // Stands in for the real SMS in mock auth mode, styled like an iOS banner.
+  return (
+    <div className="fixed inset-x-0 top-[max(0.5rem,env(safe-area-inset-top))] z-[3000] flex justify-center px-3">
+      <div className="w-full max-w-[400px] rounded-2xl bg-white/95 p-4 text-black shadow-lg">
+        <p className="text-xs font-semibold uppercase text-black/50">Messages · now</p>
+        <p className="mt-1 font-medium">Your Tether code is {code}</p>
+        {AUTH_MODE === 'mock' && <p className="mt-1 text-xs text-black/50">Demo mode, no real SMS sent</p>}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * 20-second rehearsal, started from the permissions page: a practice ping
+ * with a friend's location, then the acknowledgement. Nothing advances on a
+ * timer, if time runs out it waits for "Try again" / "Back".
+ */
+function PracticeAlert({ onDone, onBack }: { onDone: () => void; onBack: () => void }) {
+  const [phase, setPhase] = useState<'running' | 'ready' | 'timeout'>('running')
+  const [left, setLeft] = useState(PRACTICE_SECONDS)
+
+  useEffect(() => {
+    if (phase !== 'running') return
+    if (left <= 0) {
+      setPhase('timeout')
+      return
+    }
+    const id = window.setTimeout(() => setLeft((s) => s - 1), 1000)
+    return () => window.clearTimeout(id)
+  }, [phase, left])
+
+  if (phase === 'running') {
+    return (
+      <AlertOverlay
+        sound={false}
+        title="Practice: Sam needs you"
+        body={
+          <>
+            <p>“Come find me”</p>
+            <p className="mt-2">📍 Sam is 200 ft NE of you · shared location</p>
+            <p className="mt-6 text-base opacity-70">This is a practice alert. {left}s left, tap “I'm on it”.</p>
+          </>
+        }
+        onAction={() => setPhase('ready')}
+      />
+    )
+  }
+
+  if (phase === 'timeout') {
+    return (
+      <div className="flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col items-center justify-center text-center">
+          <h1 className="text-3xl font-bold">Time's up</h1>
+          <p className="mt-3 text-lg text-ink-dim">No worries, try the practice again, or go back.</p>
+        </div>
+        <div className="flex flex-col gap-3">
+          <Button
+            onClick={() => {
+              setLeft(PRACTICE_SECONDS)
+              setPhase('running')
+            }}
+          >
+            Try again
+          </Button>
+          <Button variant="ghost" onClick={onBack}>
+            Back
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // "You're ready", the whole screen goes green.
+  return (
+    <div className="fixed inset-0 z-[1500] flex justify-center bg-status-calm text-black">
+      <div className="flex w-full max-w-app flex-col px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(3rem,env(safe-area-inset-top))]">
+        <div className="flex flex-1 flex-col items-center justify-center text-center">
+          <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-black/15">
+            <CheckIcon width={48} height={48} />
+          </div>
+          <h1 className="text-4xl font-extrabold">You're ready.</h1>
+          <p className="mt-3 text-xl font-medium">
+            That's exactly what a real alert looks like. Sam would now see: “You're on it.”
+          </p>
+        </div>
+        <button onClick={onDone} className="min-h-tap w-full rounded-xl2 bg-black text-xl font-bold text-white active:scale-[0.98]">
+          Done
+        </button>
+      </div>
+    </div>
+  )
+}
