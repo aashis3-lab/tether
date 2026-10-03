@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import basicSsl from '@vitejs/plugin-basic-ssl'
-import path from 'path'
+import { fileURLToPath } from 'node:url'
 
 // `npm run dev:phone` (mode "phone") serves over HTTPS on your LAN so a real
 // phone can use location, notifications, and SMS-code autofill, browsers
@@ -52,7 +52,7 @@ export default defineConfig(({ mode }) => ({
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
   server: {
