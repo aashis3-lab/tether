@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type L from 'leaflet'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { AddPlaceSheet } from '@/components/AddPlaceSheet'
 import { Avatar } from '@/components/Avatar'
 import { BottomSheet, type SheetSnap } from '@/components/BottomSheet'
 import { GroupWidget } from '@/components/GroupWidget'
-import { AlertTriangleIcon, CrosshairIcon, GearIcon, PinIcon, PlusIcon, SendIcon, ShieldIcon, UserCheckIcon } from '@/components/icons'
+import { AlertTriangleIcon, CrosshairIcon, GearIcon, PinIcon, PlusIcon, SendIcon, ShieldIcon, UserCheckIcon, XIcon } from '@/components/icons'
 import { IncomingAlerts } from '@/components/IncomingAlerts'
 import { LocationFix } from '@/components/LocationFix'
 import { MapView } from '@/components/MapView'
@@ -41,6 +41,11 @@ export function ActiveSession() {
   const [addOpen, setAddOpen] = useState(false)
   const [picking, setPicking] = useState(false)
   const [editPinId, setEditPinId] = useState<string | null>(null)
+  // Right after starting a party (or while you're the only one in it), nudge
+  // toward inviting friends instead of a separate "Start this night" step.
+  const justStarted = Boolean((useLocation().state as { invitePrompt?: boolean } | null)?.invitePrompt)
+  const [inviteDismissed, setInviteDismissed] = useState(false)
+  const showInvite = !inviteDismissed && (justStarted || members.length === 1)
   const mapRef = useRef<L.Map | null>(null)
   // Height of the summary bar + banners, so the map fits everyone below it.
   const topRef = useRef<HTMLDivElement>(null)
@@ -128,6 +133,29 @@ export function ActiveSession() {
               </div>
             </div>
           </div>
+
+          {showInvite && snap === 'collapsed' && (
+            <div className="pointer-events-none fixed inset-x-0 z-[860] flex justify-center" style={{ bottom: sheetH + 72 }}>
+              <div className="pointer-events-auto mx-3 w-full max-w-[calc(430px-1.5rem)] animate-enter rounded-2xl bg-bg-raised/95 p-4 shadow-[0_8px_30px_rgba(0,0,0,0.6)] backdrop-blur">
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xl font-bold">{justStarted ? 'Your party is live!' : 'Just you so far'}</p>
+                    <p className="mt-0.5 text-base text-ink-dim">Invite friends so Tether can watch out for everyone.</p>
+                  </div>
+                  <button
+                    aria-label="Dismiss"
+                    onClick={() => setInviteDismissed(true)}
+                    className="-mr-2 -mt-2 flex h-11 w-11 shrink-0 items-center justify-center text-ink-dim"
+                  >
+                    <XIcon width={20} height={20} />
+                  </button>
+                </div>
+                <button onClick={() => navigate(`${base}/invite`)} className={`mt-3 ${buttonClass('primary')}`}>
+                  Invite friends
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Map buttons, floating just above the sheet. */}
           {snap !== 'full' && (

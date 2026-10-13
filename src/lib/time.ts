@@ -1,8 +1,8 @@
-/** Next 9:00 AM local time, the spec's default session end. */
+/** Default party end: 12 hours from now, rounded up to the next 15 minutes. */
 export function defaultEndTime(): Date {
-  const d = new Date()
-  d.setHours(9, 0, 0, 0)
-  if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1)
+  const d = new Date(Date.now() + 12 * 3600_000)
+  d.setSeconds(0, 0)
+  d.setMinutes(Math.ceil(d.getMinutes() / 15) * 15)
   return d
 }
 

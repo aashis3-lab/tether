@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@/auth/AuthProvider'
 import { CheckCircleIcon, ClockIcon, PinIcon, SearchIcon, XIcon } from '@/components/icons'
 import { PlaceKindIcon } from '@/components/PlaceKindIcon'
 import { Button, Header, Screen, Title } from '@/components/ui'
@@ -8,7 +9,7 @@ import { StartProgress } from './StartFlow'
 import { locationPermission, requestLocation } from '@/lib/device'
 import { distanceM, formatDistance, placeName, reverseGeocode } from '@/lib/geo'
 import { updateDraft, useNightDraft, type Destination } from '@/lib/nightDraft'
-import { nearbyPlacesLive, placesAvailable, recentDestinations, searchPlaces } from '@/lib/places'
+import { approximateLocation, nearbyPlacesLive, placesAvailable, recentDestinations, searchPlaces } from '@/lib/places'
 import type { LatLng } from '@/lib/types'
 
 const same = (a: Destination, b: Destination) => a.name === b.name && a.address === b.address
@@ -16,6 +17,7 @@ const same = (a: Destination, b: Destination) => a.name === b.name && a.address 
 /** "Where are you going?", search + suggestions; each pick becomes a venue pin. */
 export function DestinationScreen() {
   const navigate = useNavigate()
+  const { profile } = useAuth()
   const draft = useNightDraft()
   const [picked, setPicked] = useState<Destination[]>(draft.destinations)
   const [query, setQuery] = useState('')
@@ -23,17 +25,38 @@ export function DestinationScreen() {
   const [searching, setSearching] = useState(false)
   const [here, setHere] = useState<LatLng | null>(null)
   const [nearby, setNearby] = useState<Destination[]>([])
-  const [locState, setLocState] = useState<'checking' | 'on' | 'off' | 'denied' | 'locating'>('checking')
+  // ask = never asked yet; off = asked but no fix (services off, timeout, insecure).
+  const [locState, setLocState] = useState<'checking' | 'ask' | 'on' | 'off' | 'denied' | 'locating'>('checking')
   const [current, setCurrent] = useState<Destination | null>(null)
   // Show the search box when nothing is picked yet, or after "Add Destination".
   const [adding, setAdding] = useState(draft.destinations.length === 0)
   const input = useRef<HTMLInputElement>(null)
   const recent = useRef(recentDestinations())
 
+  // Where to bias search and suggestions: you, else your saved home, else
+  // a rough IP-based location.
+  const home =
+    profile?.home_lat != null && profile?.home_lng != null ? { lat: profile.home_lat, lng: profile.home_lng } : null
+  const [ipSpot, setIpSpot] = useState<LatLng | null>(null)
+  const anchor = here ?? home ?? ipSpot
+  useEffect(() => {
+    if (!home) void approximateLocation().then(setIpSpot)
+    // Only needed once, when there's no saved home.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Nearby venues before you type anything; refreshed once your real location arrives.
+  const anchorKey = anchor ? `${anchor.lat.toFixed(3)},${anchor.lng.toFixed(3)}` : ''
+  useEffect(() => {
+    if (anchor) void nearbyPlacesLive(anchor, setNearby)
+    // Re-run only when the anchor really moves.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchorKey])
+
   // Where you actually are -> "Current location" + nearby suggestions.
   async function locate() {
     setLocState('locating')
-    const r = await requestLocation()
+    const r = await requestLocation(10_000)
     if (!r.ok) {
       setLocState(r.reason === 'denied' ? 'denied' : 'off')
       return
@@ -41,20 +64,20 @@ export function DestinationScreen() {
     const p = { lat: r.lat, lng: r.lng }
     setHere(p)
     setLocState('on')
-    void nearbyPlacesLive(p, setNearby)
     const [name, full] = await Promise.all([placeName(p), reverseGeocode(p)])
     const address = full ? full.split(',').slice(0, 3).join(',').trim() : ''
     setCurrent({ name: name ? `Current location · ${name}` : 'Current location', address, lat: p.lat, lng: p.lng })
   }
 
   // Only ask the browser on load if permission was already given; otherwise
-  // wait for a tap on "Use my current location".
+  // wait for a tap on "Use my current location". Never sit on "Finding you…":
+  // a permission check that hangs counts as not asked yet.
   useEffect(() => {
-    void locationPermission().then((s) => {
+    const timeout = new Promise<'prompt'>((r) => window.setTimeout(() => r('prompt'), 2500))
+    void Promise.race([locationPermission(), timeout]).then((s) => {
       if (s === 'granted') void locate()
-      else setLocState(s === 'denied' ? 'denied' : 'off')
+      else setLocState(s === 'denied' ? 'denied' : s === 'prompt' ? 'ask' : 'off')
     })
-     
   }, [])
 
   // Debounced autocomplete.
@@ -65,11 +88,13 @@ export function DestinationScreen() {
     }
     setSearching(true)
     const t = window.setTimeout(async () => {
-      setResults(await searchPlaces(query, here))
+      setResults(await searchPlaces(query, anchor))
       setSearching(false)
     }, 300)
     return () => window.clearTimeout(t)
-  }, [query, here])
+    // `anchorKey` stands in for `anchor`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, anchorKey])
 
   function pick(d: Destination) {
     setPicked((p) => (p.some((x) => same(x, d)) ? p : [...p, d]))
@@ -172,12 +197,20 @@ export function DestinationScreen() {
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block font-semibold">
-                          {locState === 'locating' || locState === 'checking' ? 'Finding you…' : 'Use my current location'}
+                          {locState === 'locating' || locState === 'checking'
+                            ? 'Finding you…'
+                            : locState === 'ask'
+                              ? 'Use my current location'
+                              : 'Turn on location for nearby places'}
                         </span>
                         <span className="block text-base text-ink-dim">
                           {locState === 'denied'
-                            ? 'Location is blocked, turn it on in Settings → Permissions'
-                            : 'Also suggests places near you'}
+                            ? 'Location is blocked. Turn it on in your phone settings, then tap here.'
+                            : locState === 'off'
+                              ? 'Location is off. Tap to try again.'
+                              : home && locState === 'ask'
+                                ? 'Showing places near your home for now'
+                                : 'Also suggests places near you'}
                         </span>
                       </span>
                     </button>

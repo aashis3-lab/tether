@@ -10,7 +10,7 @@ import { clearDraft, updateDraft, useNightDraft } from '@/lib/nightDraft'
 import { rememberDestinations } from '@/lib/places'
 import { profileContacts } from '@/lib/profile'
 import { supabase } from '@/lib/supabase'
-import { formatClock } from '@/lib/time'
+import { defaultEndTime, formatClock } from '@/lib/time'
 import type { Contact, Session } from '@/lib/types'
 
 /** "Step N of 4" bar shared by the Start a party screens. */
@@ -31,7 +31,9 @@ export function StartProgress({ step }: { step: 1 | 2 | 3 | 4 }) {
 export function StartWhen() {
   const navigate = useNavigate()
   const draft = useNightDraft()
-  const [value, setValue] = useState(new Date(draft.endTime))
+  // Until you pick one, the end time is 12 hours from now (not from when the app opened).
+  const [initial] = useState(() => (draft.endTimePicked ? new Date(draft.endTime) : defaultEndTime()))
+  const [value, setValue] = useState(initial)
   const [valid, setValid] = useState(true)
 
   if (draft.destinations.length === 0) return <Navigate to="/start/where" replace />
@@ -43,6 +45,7 @@ export function StartWhen() {
       <Title>When does the night end?</Title>
       <p className="mb-5 mt-1 text-lg text-ink-dim">Location sharing stops then, even if you forget.</p>
       <NightEndsCalendar
+        value={initial}
         onChange={(d, ok) => {
           setValue(d)
           setValid(ok)
@@ -54,7 +57,7 @@ export function StartWhen() {
           big
           disabled={!valid}
           onClick={() => {
-            updateDraft({ endTime: value.toISOString() })
+            updateDraft({ endTime: value.toISOString(), endTimePicked: true })
             navigate('/start/guardian')
           }}
         >
@@ -134,7 +137,7 @@ export function StartName() {
     created.current = true
     rememberDestinations(draft.destinations)
     // Navigate first, then clear the plan, so this screen can't redirect.
-    navigate(`/session/${(data as Session).id}/invite`, { replace: true })
+    navigate(`/session/${(data as Session).id}`, { replace: true, state: { invitePrompt: true } })
     window.setTimeout(clearDraft, 0)
   }
 
@@ -150,7 +153,7 @@ export function StartName() {
           setName(e.target.value)
           updateDraft({ name: e.target.value })
         }}
-        placeholder={venue ? `Friday at ${venue}` : 'Friday at Red Lion'}
+        placeholder={venue ? `${day} at ${venue}` : `${day} night out`}
         maxLength={40}
         className={`${inputClass} text-xl font-semibold`}
         autoFocus

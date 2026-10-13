@@ -19,7 +19,8 @@ function toDestination(f: Feature): Destination {
 
 async function geocode(query: string, near: LatLng | null, extra = ''): Promise<Destination[]> {
   if (!KEY || !query.trim()) return []
-  const prox = near ? `&proximity=${near.lng},${near.lat}` : ''
+  // No known spot: let MapTiler bias by the phone's IP location instead.
+  const prox = near ? `&proximity=${near.lng},${near.lat}` : '&proximity=ip'
   const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?key=${KEY}${extra.includes('limit=') ? '' : '&limit=6'}${prox}${extra}`
   try {
     const res = await fetch(url)
@@ -231,3 +232,15 @@ export function rememberDestinations(ds: Destination[]) {
 }
 
 export const placesAvailable = Boolean(KEY)
+
+/** Rough location from the phone's IP address (city level), for biasing when GPS is off. */
+export async function approximateLocation(): Promise<LatLng | null> {
+  if (!KEY) return null
+  try {
+    const res = await fetch(`https://api.maptiler.com/geolocation/ip.json?key=${KEY}`)
+    const d = (await res.json()) as { latitude?: number; longitude?: number }
+    return d.latitude != null && d.longitude != null ? { lat: d.latitude, lng: d.longitude } : null
+  } catch {
+    return null
+  }
+}

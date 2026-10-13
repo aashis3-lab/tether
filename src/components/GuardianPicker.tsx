@@ -23,13 +23,11 @@ export function GuardianPicker({
 
   return (
     <div>
-      {heading ? (
+      {heading && (
         <>
           <h2 className="text-lg font-semibold">Your guardian tonight</h2>
           <p className="mb-3 text-ink-dim">A sober person who gets a text only if you need help.</p>
         </>
-      ) : (
-        <p className="mb-3 text-ink-dim">A sober person at home who gets a text only if you need help.</p>
       )}
 
       <div className="flex flex-col gap-2">

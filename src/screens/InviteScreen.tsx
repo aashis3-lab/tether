@@ -4,7 +4,7 @@ import { Header, Eyebrow, Screen, Title } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
 import { useSessionCtx } from './session/context'
 
-/** "Make a plan", share the code right after starting a party. */
+/** Share the party code (opened from the map's "Invite friends"). */
 export function InviteScreen() {
   const navigate = useNavigate()
   const { session, members } = useSessionCtx()
@@ -27,7 +27,7 @@ export function InviteScreen() {
           onClick={() => navigate(`/session/${session.id}`, { replace: true })}
           className={buttonClass('primary')}
         >
-          Start this night
+          Done
         </button>
       </div>
     </Screen>

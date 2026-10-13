@@ -22,6 +22,8 @@ export type PlaceKind = 'bar' | 'pub' | 'nightclub' | 'restaurant'
 export interface NightDraft {
   destinations: Destination[]
   endTime: string // ISO
+  /** True once the end time was picked on the "When" step (else it tracks the default). */
+  endTimePicked?: boolean
   guardian: Contact | null
   /** Optional party name; defaults to the first venue's name. */
   name?: string
