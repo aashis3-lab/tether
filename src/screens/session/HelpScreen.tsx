@@ -148,13 +148,16 @@ export function HelpScreen() {
             )}
           </HoldButton>
         ) : (
-          <div className="flex min-h-[250px] flex-[1.6] flex-col items-center justify-center rounded-3xl border-2 border-dashed border-status-alert/60 p-4 text-center">
-            <p className="text-2xl font-black text-status-alert">Call 911</p>
-            <p className="mt-2 text-ink-dim">
-              Demo mode is on but no test number is set. Add <span className="font-mono">VITE_DEMO_911_NUMBER</span> to
-              .env (or set <span className="font-mono">VITE_DEMO_SAFE_911=false</span> to dial real 911).
-            </p>
-          </div>
+          // Only reachable in dev builds (production always has a number to dial).
+          import.meta.env.DEV && (
+            <div className="flex min-h-[250px] flex-[1.6] flex-col items-center justify-center rounded-3xl border-2 border-dashed border-status-alert/60 p-4 text-center">
+              <p className="text-2xl font-black text-status-alert">Call 911</p>
+              <p className="mt-2 text-ink-dim">
+                Demo mode is on but no test number is set. Add <span className="font-mono">VITE_DEMO_911_NUMBER</span> to
+                .env (or set <span className="font-mono">VITE_DEMO_SAFE_911=false</span> to dial real 911).
+              </p>
+            </div>
+          )
         )}
 
         {/* Call guardian: second and smaller, plain tap, real tel: link. */}
