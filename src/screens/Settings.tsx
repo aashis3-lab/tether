@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { AUTH_MODE, formatPhone } from '@/auth/phoneAuth'
 import { AvatarPicker } from '@/components/AvatarPicker'
+import { BackTapSteps } from '@/components/BackTapSteps'
 import { GuardianSheet } from '@/components/GuardianSheet'
 import { ChevronRightIcon, PlusIcon, XIcon } from '@/components/icons'
 import { KeychainCard } from '@/components/KeychainCard'
@@ -169,12 +170,7 @@ export function Settings() {
       {edit === 'medical' && <MedicalSheet profile={profile} onClose={() => setEdit(null)} onSave={save} />}
 
       <Sheet open={edit === 'backtap'} onClose={() => setEdit(null)} title="iPhone Back Tap">
-        <ol className="flex list-decimal flex-col gap-2 pl-5 text-lg">
-          <li>Add Tether to your Home Screen (Share → Add to Home Screen).</li>
-          <li>In the Shortcuts app, make a shortcut that opens Tether.</li>
-          <li>Settings → Accessibility → Touch → Back Tap → Double Tap → pick that shortcut.</li>
-          <li>Test it: double-tap the back of your phone.</li>
-        </ol>
+        <BackTapSteps />
       </Sheet>
     </Screen>
   )
@@ -253,14 +249,14 @@ function ContactsSheet({ profile, onClose, onSave }: { profile: Profile; onClose
           </div>
         ))}
       </div>
-      <Button
-        variant="danger"
-        className="mt-3 flex items-center gap-3"
+      <button
+        type="button"
+        className="mt-2 flex min-h-[48px] items-center gap-2 font-semibold text-ink underline underline-offset-4"
         onClick={() => setList((l) => [...l, { name: '', phone: '' }])}
       >
-        <PlusIcon width={20} height={20} />
+        <PlusIcon width={18} height={18} />
         Add another emergency contact
-      </Button>
+      </button>
       <div className="mt-3">
         <ErrorText>{error}</ErrorText>
       </div>

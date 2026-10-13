@@ -165,15 +165,14 @@ export function ProfileForm({
         ))}
       </div>
 
-      <Button
+      <button
         type="button"
-        variant="danger"
-        className="mt-8 flex items-center gap-3 text-left"
+        className="mt-3 flex min-h-[48px] items-center gap-2 self-start font-semibold text-ink underline underline-offset-4"
         onClick={() => setContacts((cs) => [...cs, { ...emptyContact }])}
       >
-        <PlusIcon width={20} height={20} />
+        <PlusIcon width={18} height={18} />
         Add another emergency contact
-      </Button>
+      </button>
 
       {showMedical && (
         <div className="mt-8">
@@ -191,7 +190,8 @@ export function ProfileForm({
         <ErrorText>{error}</ErrorText>
       </div>
 
-      <div className="mt-auto pt-8">
+      {/* Pinned to the bottom of the screen so it's always in reach. */}
+      <div className="sticky bottom-0 -mx-5 mt-auto bg-gradient-to-t from-bg via-bg to-bg/0 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-6">
         <Button type="submit" disabled={busy || !ready}>
           {busy ? 'Saving…' : submitLabel}
         </Button>

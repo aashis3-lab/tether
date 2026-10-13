@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
+import { useAuth } from '@/auth/AuthProvider'
 import { isAndroid, isIOS, isStandalone } from '@/lib/device'
 import { XIcon } from './icons'
 
@@ -18,6 +19,7 @@ interface InstallPromptEvent extends Event {
  */
 export function InstallBanner() {
   const { pathname } = useLocation()
+  const { profile } = useAuth()
   const [promptEvent, setPromptEvent] = useState<InstallPromptEvent | null>(null)
   const [dismissed, setDismissed] = useState(() => {
     try {
@@ -36,8 +38,13 @@ export function InstallBanner() {
     return () => window.removeEventListener('beforeinstallprompt', onPrompt)
   }, [])
 
-  const hiddenHere = pathname.startsWith('/session') || pathname.startsWith('/guardian') || pathname.startsWith('/g/')
-  if (dismissed || isStandalone() || hiddenHere) return null
+  // Not during onboarding (or before it), a party, or on the guardian page.
+  const hiddenHere =
+    pathname.startsWith('/signup') ||
+    pathname.startsWith('/session') ||
+    pathname.startsWith('/guardian') ||
+    pathname.startsWith('/g/')
+  if (dismissed || isStandalone() || hiddenHere || !profile) return null
   // Nothing useful to say on browsers that can't install and aren't iOS.
   if (!promptEvent && !isIOS) return null
 

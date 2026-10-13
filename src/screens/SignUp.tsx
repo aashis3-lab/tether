@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import {
@@ -11,14 +11,17 @@ import {
   verifyCode,
 } from '@/auth/phoneAuth'
 import { AlertOverlay } from '@/components/AlertOverlay'
+import { BackTapSteps } from '@/components/BackTapSteps'
+import { isIOS } from '@/lib/device'
 import { PermissionsFlow } from '@/components/PermissionsPage'
 import { ProfileForm } from '@/components/ProfileForm'
 import { CodeBoxes } from '@/components/CodeBoxes'
 import { CheckIcon } from '@/components/icons'
 import { Button, ErrorText, Field, Screen, Title } from '@/components/ui'
+import { buttonClass } from '@/components/buttons'
 import { unlockAudio } from '@/lib/sound'
 
-type Step = 'verify' | 'profile' | 'permissions' | 'practiceIntro' | 'practice' | 'done'
+type Step = 'verify' | 'profile' | 'permissions' | 'practiceIntro' | 'practice' | 'backtap' | 'done'
 
 const PRACTICE_SECONDS = 20
 
@@ -56,6 +59,16 @@ export function SignUp() {
     return () => ac.abort()
      
   }, [codeSent, sendCount])
+
+  // Ignore taps right after a step appears, so a double tap can't skip it.
+  const stepAt = useRef(0)
+  useEffect(() => {
+    stepAt.current = performance.now()
+  }, [step])
+  const settled = () => performance.now() - stepAt.current > 600
+
+  // After the practice: iPhone gets the Back Tap offer, everyone else is done.
+  const finish = () => (isIOS ? setStep('backtap') : navigate(next, { replace: true }))
 
   // Already fully set up and not mid-onboarding -> nothing to do here.
   if (!loading && profile && step === 'verify') return <Navigate to={next} replace />
@@ -198,15 +211,34 @@ export function SignUp() {
             <Button big onClick={() => setStep('practice')}>
               Start 20-second practice
             </Button>
-            <button onClick={() => navigate(next, { replace: true })} className="min-h-[48px] text-ink-dim">
-              Not now
+            <button onClick={() => settled() && finish()} className={buttonClass('text')}>
+              Skip the practice
             </button>
           </div>
         </div>
       )}
 
       {step === 'practice' && (
-        <PracticeAlert onDone={() => navigate(next, { replace: true })} onBack={() => setStep('practiceIntro')} />
+        <PracticeAlert onDone={finish} onBack={() => setStep('practiceIntro')} />
+      )}
+
+      {step === 'backtap' && (
+        <div className="flex flex-1 flex-col">
+          <h1 className="text-[2rem] font-bold leading-tight tracking-tight">Open Tether with a double tap</h1>
+          <p className="mb-5 mt-2 text-lg text-ink-dim">
+            Set up iPhone Back Tap so two taps on the back of your phone open Tether, no unlocking and searching.
+          </p>
+          <BackTapSteps />
+          <p className="mt-4 text-base text-ink-dim">You can find these steps later in Settings.</p>
+          <div className="mt-auto flex flex-col gap-2 pt-6">
+            <Button big onClick={() => settled() && navigate(next, { replace: true })}>
+              Done
+            </Button>
+            <button onClick={() => settled() && navigate(next, { replace: true })} className={buttonClass('text')}>
+              Skip for now
+            </button>
+          </div>
+        </div>
       )}
     </Screen>
   )

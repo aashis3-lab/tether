@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   locationPermission,
   notificationPermission,
@@ -8,6 +8,7 @@ import {
 } from '@/lib/device'
 import { BellIcon, BluetoothIcon, PinIcon } from './icons'
 import { Button } from './ui'
+import { buttonClass } from './buttons'
 
 // Shared with Settings → Safety keychain.
 const KEYCHAIN_KEY = 'tether.keychainPaired'
@@ -49,19 +50,26 @@ const store = {
   },
 }
 
-const COPY: Record<Kind, { icon: ReactNode; title: string; why: string }> = {
+// A tap that lands within this long after a step appears is ignored, so a
+// double tap (or a tap-through onto the next screen's button) can't skip it.
+const TAP_GUARD_MS = 600
+
+const COPY: Record<Kind, { icon: ReactNode; title: string; why: string; skip: string }> = {
   location: {
     icon: <PinIcon width={44} height={44} />,
+    skip: 'Skip location for now',
     title: 'Share your location',
     why: 'Only shared during a party, and deleted the next morning.',
   },
   notifications: {
     icon: <BellIcon width={44} height={44} />,
+    skip: 'Skip alerts for now',
     title: 'Turn on alerts',
     why: 'So your friends can reach you the second they need you.',
   },
   bluetooth: {
     icon: <BluetoothIcon width={44} height={44} />,
+    skip: 'Skip keychain for now',
     title: 'Pair your keychain',
     why: 'Lets your safety keychain send a ping without your phone.',
   },
@@ -81,13 +89,22 @@ export function PermissionsFlow({ onDone }: { onDone: () => void }) {
   const kind = ORDER[index]
   const bt = BT
 
-  const next = () => {
-    if (index + 1 >= ORDER.length) onDone()
+  // Moves on from step `from` only, so one "Skip" can never skip two steps.
+  const advanced = useRef(-1)
+  const next = (from: number = index) => {
+    if (advanced.current >= from) return
+    advanced.current = from
+    if (from + 1 >= ORDER.length) onDone()
     else {
       setPhase('checking')
-      setIndex(index + 1)
+      setIndex(from + 1)
     }
   }
+  const shownAt = useRef(0)
+  useEffect(() => {
+    if (phase !== 'checking') shownAt.current = performance.now()
+  }, [phase, index])
+  const tooSoon = () => performance.now() - shownAt.current < TAP_GUARD_MS
 
   // Read the real status when a step opens; skip it if it's already allowed.
   useEffect(() => {
@@ -198,7 +215,7 @@ export function PermissionsFlow({ onDone }: { onDone: () => void }) {
 
           <div className="flex flex-col gap-2 pt-6">
             {phase !== 'install' && phase !== 'insecure' && (
-              <Button big onClick={allow} disabled={busy}>
+              <Button big onClick={() => !tooSoon() && void allow()} disabled={busy}>
                 {busy ? 'Waiting...' : phase === 'blocked' ? 'Try again' : 'Allow'}
               </Button>
             )}
@@ -214,8 +231,13 @@ export function PermissionsFlow({ onDone }: { onDone: () => void }) {
                 I've done this
               </Button>
             )}
-            <button onClick={next} className="min-h-[48px] text-ink-dim">
-              Not now
+            <button
+              onClick={() => {
+                if (!tooSoon()) next(index)
+              }}
+              className={buttonClass('text')}
+            >
+              {copy.skip}
             </button>
           </div>
         </>
