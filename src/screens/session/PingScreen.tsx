@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { CheckIcon, SendIcon, ShieldAlertIcon } from '@/components/icons'
 import { Header, ErrorText, Screen, Title } from '@/components/ui'
+import { buttonClass } from '@/components/buttons'
 import { claimerName, guardianToken, raiseAlert, resolveAlert } from '@/lib/alerts'
 import { firstName } from '@/lib/format'
 import { tryOrToast } from '@/lib/toast'
@@ -24,6 +25,7 @@ export function PingScreen() {
   const level = myAlert ? RANK[myAlert.level] : 0
   const claimer = myAlert ? claimerName(myAlert, members) : null
   const guardian = firstName(me?.guardian_name) || 'your guardian'
+  const guardianFull = me?.guardian_name?.trim() || 'Your guardian'
 
   const nearest = members
     .filter((m) => m.id !== me?.id && m.user_id && m.status !== 'home')
@@ -79,7 +81,7 @@ export function PingScreen() {
               await tryOrToast("Couldn't cancel the alert", () => resolveAlert(myAlert.id))
               setBusy(false)
             }}
-            className="mt-3 min-h-[60px] w-full rounded-2xl bg-status-calm text-lg font-bold text-black disabled:opacity-60"
+            className={`mt-3 ${buttonClass('safe')}`}
           >
             {busy ? 'Saving...' : "I'm OK now"}
           </button>
@@ -98,9 +100,9 @@ export function PingScreen() {
         />
         <Choice
           tone="red"
-          icon={<ShieldAlertIcon width={26} height={26} />}
-          title={`Alert ${guardian}`}
-          sub="Location and status."
+          icon={<ShieldAlertIcon width={30} height={30} strokeWidth={2} />}
+          title="Alert Guardian"
+          sub={`${guardianFull} gets your location and status.`}
           done={level >= 2}
           disabled={busy || level >= 2}
           onClick={() => raise('alert')}
@@ -117,7 +119,7 @@ export function PingScreen() {
 
 const TONE = {
   yellow: 'bg-findme text-black',
-  red: 'bg-danger text-white',
+  red: 'border-[3px] border-danger bg-danger/15 text-ink [&_svg]:text-status-alert',
 }
 
 function Choice({
@@ -146,7 +148,7 @@ function Choice({
       <span className="shrink-0">{icon}</span>
       <span className="min-w-0 flex-1">
         <span className="block text-2xl font-bold">{title}</span>
-        <span className="block opacity-80">{sub}</span>
+        <span className="mt-0.5 block text-base opacity-90">{sub}</span>
       </span>
       {done && <CheckIcon width={24} height={24} className="shrink-0" />}
     </button>

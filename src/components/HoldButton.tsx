@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 /**
  * Press-and-hold to confirm (default 2s). A fill sweeps across while held;
  * releasing early cancels. Used for "Emergency" so it can't fire by accident.
+ * Pass a function as children to draw your own progress (0..1) instead.
  */
 export function HoldButton({
   onComplete,
@@ -10,12 +11,14 @@ export function HoldButton({
   holdMs = 2000,
   className = '',
   disabled,
+  ariaLabel,
 }: {
   onComplete: () => void
-  children: ReactNode
+  children: ReactNode | ((progress: number) => ReactNode)
   holdMs?: number
   className?: string
   disabled?: boolean
+  ariaLabel?: string
 }) {
   const [progress, setProgress] = useState(0)
   const start = useRef<number | null>(null)
@@ -45,6 +48,7 @@ export function HoldButton({
   return (
     <button
       disabled={disabled}
+      aria-label={ariaLabel}
       onPointerDown={(e) => {
         if (disabled) return
         e.currentTarget.setPointerCapture(e.pointerId)
@@ -57,8 +61,14 @@ export function HoldButton({
       className={`relative select-none overflow-hidden ${className}`}
       style={{ touchAction: 'none', WebkitUserSelect: 'none' }}
     >
-      <span className="absolute inset-y-0 left-0 bg-white/30" style={{ width: `${progress * 100}%` }} />
-      <span className="relative">{children}</span>
+      {typeof children === 'function' ? (
+        children(progress)
+      ) : (
+        <>
+          <span className="absolute inset-y-0 left-0 bg-white/30" style={{ width: `${progress * 100}%` }} />
+          <span className="relative">{children}</span>
+        </>
+      )}
     </button>
   )
 }
