@@ -14,7 +14,8 @@ export function AlertOverlay({
   footer,
   sound = true,
 }: {
-  tone?: 'alert' | 'checkin'
+  /** alert = red (help / guardian alert), findMe = yellow (come find me), checkin = amber. */
+  tone?: 'alert' | 'findMe' | 'checkin'
   title: string
   body?: ReactNode
   actionLabel?: string
@@ -27,7 +28,7 @@ export function AlertOverlay({
     return playAlertLoop()
   }, [sound])
 
-  const bg = tone === 'alert' ? 'bg-status-alert' : 'bg-status-checkin'
+  const bg = tone === 'alert' ? 'bg-status-alert' : tone === 'findMe' ? 'bg-findme' : 'bg-status-checkin'
   return (
     <div className={`fixed inset-0 z-[2000] flex justify-center ${bg}`}>
       <div className="flex w-full max-w-app flex-col px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(3rem,env(safe-area-inset-top))] text-black">

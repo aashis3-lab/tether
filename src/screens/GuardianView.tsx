@@ -87,7 +87,7 @@ export function GuardianView() {
 
       {/* The SMS as it would arrive. */}
       <div className="mt-6">
-        <p className="mb-1 text-center text-xs text-ink-faint">Text Message · {formatClock(data.created_at)}</p>
+        <p className="mb-1 text-center text-sm text-ink-faint">Text Message · {formatClock(data.created_at)}</p>
         <div className="max-w-[85%] rounded-3xl rounded-bl-md bg-bg-card px-4 py-3 text-base leading-snug">{data.message}</div>
       </div>
 

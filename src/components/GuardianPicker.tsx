@@ -49,7 +49,7 @@ export function GuardianPicker({
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate text-lg font-semibold">{c.name}</p>
-                <p className="truncate text-sm text-ink-dim">{c.phone}</p>
+                <p className="truncate text-base text-ink-dim">{c.phone}</p>
               </div>
               {selected && <CheckIcon className="text-accent-pink" />}
             </button>

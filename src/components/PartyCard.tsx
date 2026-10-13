@@ -20,7 +20,7 @@ export function PartyCard({ party, onClick }: { party: PastParty; onClick: () =>
     >
       <span className="min-w-0 flex-1">
         <span className="block truncate font-bold">{party.name}</span>
-        <span className="block text-xs text-ink-dim">{partyDate(party.date)}</span>
+        <span className="block text-sm text-ink-dim">{partyDate(party.date)}</span>
       </span>
       <span className="flex -space-x-1.5">
         {party.members.slice(0, 4).map((m) => (
@@ -30,7 +30,7 @@ export function PartyCard({ party, onClick }: { party: PastParty; onClick: () =>
           </span>
         ))}
         {party.members.length > 4 && (
-          <span className="flex h-6 items-center pl-2 text-xs text-ink-dim">+{party.members.length - 4}</span>
+          <span className="flex h-6 items-center pl-2 text-sm text-ink-dim">+{party.members.length - 4}</span>
         )}
       </span>
     </button>

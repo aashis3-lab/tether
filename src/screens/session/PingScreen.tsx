@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { CheckIcon, SendIcon, ShieldAlertIcon } from '@/components/icons'
-import { AppHeader, ErrorText, Eyebrow, Screen, Title } from '@/components/ui'
+import { Header, ErrorText, Screen, Title } from '@/components/ui'
 import { claimerName, guardianToken, raiseAlert, resolveAlert } from '@/lib/alerts'
 import { firstName } from '@/lib/format'
 import { tryOrToast } from '@/lib/toast'
@@ -55,9 +55,8 @@ export function PingScreen() {
 
   return (
     <Screen>
-      <AppHeader back={`/session/${session.id}`} />
-      <Eyebrow>Ping</Eyebrow>
-      <Title className="mt-1">What do you need?</Title>
+      <Header title="Find me" back={`/session/${session.id}`} />
+      <Title>What do you need?</Title>
       <p className="mt-1 text-lg text-ink-dim">Tap one option.</p>
 
       {myAlert && (
@@ -111,13 +110,13 @@ export function PingScreen() {
       <div className="mt-3">
         <ErrorText>{error}</ErrorText>
       </div>
-      <p className="mt-auto pt-6 text-center text-sm text-ink-dim">In danger? Use the red HELP button to call.</p>
+      <p className="mt-auto pt-6 text-center text-base text-ink-dim">In danger? Use the red HELP button to call.</p>
     </Screen>
   )
 }
 
 const TONE = {
-  yellow: 'bg-[#f5c518] text-black',
+  yellow: 'bg-findme text-black',
   red: 'bg-danger text-white',
 }
 
@@ -142,7 +141,7 @@ function Choice({
     <button
       disabled={disabled}
       onClick={onClick}
-      className={`flex min-h-[96px] w-full items-center gap-4 rounded-2xl px-5 text-left active:scale-[0.98] disabled:opacity-70 disabled:active:scale-100 ${TONE[tone]}`}
+      className={`flex min-h-[96px] w-full items-center gap-4 rounded-2xl px-5 text-left active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100 ${TONE[tone]}`}
     >
       <span className="shrink-0">{icon}</span>
       <span className="min-w-0 flex-1">

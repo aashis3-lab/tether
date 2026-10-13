@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { BluetoothIcon } from './icons'
+import { buttonClass } from './buttons'
 
 const KEYCHAIN_KEY = 'tether.keychainPaired'
 const KEYCHAIN_NAME_KEY = 'tether.keychainName'
@@ -65,14 +66,14 @@ export function KeychainCard() {
         {name ? `Paired: ${name}` : 'Not paired'}
       </p>
       {name ? (
-        <button onClick={unpair} className="mt-2 min-h-[44px] text-sm text-ink-faint underline">
+        <button onClick={unpair} className="mt-2 min-h-[44px] text-base text-ink-faint underline">
           Unpair
         </button>
       ) : (
         <button
           onClick={pair}
           disabled={busy}
-          className="mt-3 flex min-h-tap w-full items-center justify-center gap-2 rounded-xl2 bg-brand text-lg font-bold text-white disabled:opacity-60"
+          className={`mt-3 ${buttonClass('primary')}`}
         >
           <BluetoothIcon width={20} height={20} />
           {busy ? 'Looking for devices...' : 'Pair a keychain'}

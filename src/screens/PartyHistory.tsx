@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { SearchIcon } from '@/components/icons'
 import { PartyCard } from '@/components/PartyCard'
-import { AppHeader, Screen, Title } from '@/components/ui'
+import { Header, Screen } from '@/components/ui'
 import { loadHistory, partyDate, type PastParty } from '@/lib/history'
 
 /** Every past party, compact, with search (name, venue, people, date). */
@@ -29,8 +29,7 @@ export function PartyHistory() {
 
   return (
     <Screen>
-      <AppHeader back="/" />
-      <Title>Your parties</Title>
+      <Header title="Your parties" back="/" />
       <label className="mt-4 flex min-h-[52px] items-center gap-3 rounded-2xl border border-white/10 bg-bg-card px-4">
         <SearchIcon width={18} height={18} className="text-ink-dim" />
         <input

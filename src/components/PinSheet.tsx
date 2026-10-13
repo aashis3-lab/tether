@@ -54,7 +54,7 @@ export function PinSheet({
   return (
     <Sheet open onClose={onClose} title={pin ? 'Edit pin' : 'New pin'}>
       <Field label="Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="The Lantern" autoFocus />
-      <p className="mt-2 text-sm text-ink-dim">Everyone in the group sees it. Leaving a pin's area counts as leaving a venue.</p>
+      <p className="mt-2 text-base text-ink-dim">Everyone in the group sees it. Leaving a pin's area counts as leaving a venue.</p>
       <div className="mt-2">
         <ErrorText>{error}</ErrorText>
       </div>
@@ -62,7 +62,7 @@ export function PinSheet({
         {busy ? 'Saving…' : pin ? 'Save' : 'Add pin'}
       </Button>
       {pin && (
-        <Button variant="ghost" className="mt-2 text-status-alert" disabled={busy} onClick={remove}>
+        <Button variant="text" className="mt-2 text-status-alert" disabled={busy} onClick={remove}>
           Remove pin
         </Button>
       )}

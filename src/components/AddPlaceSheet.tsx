@@ -85,9 +85,9 @@ export function AddPlaceSheet({
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{d.name}</span>
-                {d.address && <span className="block truncate text-sm text-ink-dim">{d.address}</span>}
+                {d.address && <span className="block truncate text-base text-ink-dim">{d.address}</span>}
               </span>
-              {near && <span className="shrink-0 text-sm text-ink-dim">{formatDistance(distanceM(near, d))}</span>}
+              {near && <span className="shrink-0 text-base text-ink-dim">{formatDistance(distanceM(near, d))}</span>}
             </button>
           </li>
         ))}
@@ -156,7 +156,7 @@ export function ConfirmPlace({
       <Button big className="mt-4" disabled={busy} onClick={add}>
         {busy ? 'Adding…' : 'Add place'}
       </Button>
-      <Button variant="ghost" className="mt-1" onClick={onBack}>
+      <Button variant="text" className="mt-1" onClick={onBack}>
         Back
       </Button>
     </Sheet>

@@ -64,12 +64,12 @@ export function InstallBanner() {
                 if (r.outcome === 'accepted') dismiss()
                 setPromptEvent(null)
               }}
-              className="mt-2 min-h-[40px] rounded-xl bg-accent-pink px-4 font-bold text-white"
+              className="mt-2 min-h-[44px] rounded-xl bg-white px-5 font-bold text-black"
             >
               Install
             </button>
           ) : (
-            <p className="mt-0.5 text-sm text-ink-dim">
+            <p className="mt-0.5 text-base text-ink-dim">
               {isIOS
                 ? 'Tap the Share button, then “Add to Home Screen”. Alerts on iPhone only work from the Home Screen app.'
                 : isAndroid

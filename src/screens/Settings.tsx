@@ -8,7 +8,7 @@ import { ChevronRightIcon, PlusIcon, XIcon } from '@/components/icons'
 import { KeychainCard } from '@/components/KeychainCard'
 import { PermissionsCard } from '@/components/PermissionsCard'
 import { SmsCard } from '@/components/SmsCard'
-import { AppHeader, Button, ErrorText, Eyebrow, Field, Screen, Sheet, Title } from '@/components/ui'
+import { Header, Button, ErrorText, Field, Screen, Sheet, Title } from '@/components/ui'
 import { useActiveSessionId } from '@/hooks/useSession'
 import { geocode, getCurrentPosition } from '@/lib/geo'
 import { profileContacts } from '@/lib/profile'
@@ -59,9 +59,8 @@ export function Settings() {
 
   return (
     <Screen>
-      <AppHeader back={true} right={false} />
-      <Eyebrow tone="orange">{profile.name}</Eyebrow>
-      <Title className="mt-1">Safety settings</Title>
+      <Header title="Settings" back={true} />
+      <Title>Safety settings</Title>
 
       <div className="mt-5 rounded-xl2 bg-bg-card p-4">
         <p className="mb-3 text-sm font-bold uppercase tracking-wide text-ink-dim">Profile picture</p>
@@ -120,7 +119,7 @@ export function Settings() {
       </div>
 
       <Button
-        variant="ghost"
+        variant="text"
         onClick={async () => {
           await signOut()
           navigate('/signup', { replace: true })
@@ -186,7 +185,7 @@ function Row({ title, detail, onClick }: { title: string; detail: ReactNode; onC
     <button onClick={onClick} className="flex min-h-tap w-full items-center gap-3 px-4 py-3 text-left">
       <span className="min-w-0 flex-1">
         <span className="block text-lg font-bold">{title}</span>
-        <span className="block truncate text-sm text-ink-dim">{detail}</span>
+        <span className="block truncate text-base text-ink-dim">{detail}</span>
       </span>
       <ChevronRightIcon width={20} height={20} className="shrink-0 text-ink-dim" />
     </button>

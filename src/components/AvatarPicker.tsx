@@ -85,11 +85,11 @@ export function AvatarPicker({
           </button>
         </div>
         {url ? (
-          <button type="button" onClick={() => void commit(null)} className="self-start text-sm text-ink-faint underline">
+          <button type="button" onClick={() => void commit(null)} className="self-start text-base text-ink-faint underline">
             Remove picture
           </button>
         ) : (
-          <p className="text-sm text-ink-dim">Optional, friends see your initials otherwise.</p>
+          <p className="text-base text-ink-dim">Optional, friends see your initials otherwise.</p>
         )}
         <ErrorText>{error}</ErrorText>
       </div>

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircleIcon, ChevronLeftIcon, ClockIcon, PinIcon, SearchIcon, XIcon } from '@/components/icons'
+import { CheckCircleIcon, ClockIcon, PinIcon, SearchIcon, XIcon } from '@/components/icons'
 import { PlaceKindIcon } from '@/components/PlaceKindIcon'
-import { Button, Screen, Title } from '@/components/ui'
+import { Button, Header, Screen, Title } from '@/components/ui'
+import { buttonClass } from '@/components/buttons'
 import { StartProgress } from './StartFlow'
 import { locationPermission, requestLocation } from '@/lib/device'
 import { distanceM, formatDistance, placeName, reverseGeocode } from '@/lib/geo'
@@ -84,10 +85,7 @@ export function DestinationScreen() {
 
   return (
     <Screen>
-      <button onClick={() => navigate('/')} className="-ml-1 mb-3 flex min-h-[44px] items-center gap-1 font-semibold text-accent-pink">
-        <ChevronLeftIcon width={18} height={18} />
-        Back
-      </button>
+      <Header title="Start a party" back="/" />
       <StartProgress step={1} />
       <Title>Where are you going?</Title>
       <p className="mt-1 text-lg text-ink-dim">Set your destination for the night.</p>
@@ -126,7 +124,7 @@ export function DestinationScreen() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-lg font-semibold">{d.name}</p>
-                    <p className="truncate text-sm text-ink-dim">{d.address}</p>
+                    <p className="truncate text-base text-ink-dim">{d.address}</p>
                   </div>
                   {picked.length > 1 ? (
                     <button
@@ -150,7 +148,7 @@ export function DestinationScreen() {
                 setAdding(true)
                 window.setTimeout(() => input.current?.focus(), 0)
               }}
-              className="mt-4 min-h-[48px] w-full rounded-xl2 bg-disabled/80 font-semibold text-white active:scale-[0.98]"
+              className={`mt-4 ${buttonClass('secondary')}`}
             >
               Add Destination
             </button>
@@ -176,7 +174,7 @@ export function DestinationScreen() {
                         <span className="block font-semibold">
                           {locState === 'locating' || locState === 'checking' ? 'Finding you…' : 'Use my current location'}
                         </span>
-                        <span className="block text-sm text-ink-dim">
+                        <span className="block text-base text-ink-dim">
                           {locState === 'denied'
                             ? 'Location is blocked, turn it on in Settings → Permissions'
                             : 'Also suggests places near you'}
@@ -232,9 +230,9 @@ function PlaceRow({ d, icon, meta, onClick }: { d: Destination; icon: ReactNode;
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/5 text-ink-dim">{icon}</span>
         <span className="min-w-0 flex-1">
           <span className="block truncate font-semibold">{d.name}</span>
-          <span className="block truncate text-sm text-ink-dim">{d.address}</span>
+          <span className="block truncate text-base text-ink-dim">{d.address}</span>
         </span>
-        {meta && <span className="shrink-0 text-sm text-ink-dim">{meta}</span>}
+        {meta && <span className="shrink-0 text-base text-ink-dim">{meta}</span>}
       </button>
     </li>
   )

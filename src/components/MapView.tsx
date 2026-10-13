@@ -268,7 +268,7 @@ export function MapView({
         <TileLayer url={TILE_URL} attribution={TILE_ATTRIB} />
       ) : (
         <div className="pointer-events-none absolute inset-0 z-[450] flex items-center justify-center p-4 text-center">
-          <p className="rounded-xl2 bg-black/70 px-4 py-3 text-sm text-ink-dim">
+          <p className="rounded-xl2 bg-black/70 px-4 py-3 text-base text-ink-dim">
             {import.meta.env.DEV ? (
               <>
                 Map unavailable: add <span className="font-mono text-ink">VITE_MAPTILER_KEY</span> to .env and restart the

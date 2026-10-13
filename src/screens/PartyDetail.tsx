@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { Avatar } from '@/components/Avatar'
 import { PinIcon, ShieldIcon } from '@/components/icons'
-import { AppHeader, Eyebrow, Screen, Spinner, Title } from '@/components/ui'
+import { Header, Eyebrow, Screen, Spinner, Title } from '@/components/ui'
 import { loadHistory, partyDate, type PastParty } from '@/lib/history'
 import { formatClock } from '@/lib/time'
 
@@ -21,7 +21,7 @@ export function PartyDetail() {
 
   return (
     <Screen>
-      <AppHeader back="/" />
+      <Header title="Party" back="/history" />
       {!party ? (
         <p className="text-ink-dim">This party isn't available.</p>
       ) : (
@@ -70,7 +70,7 @@ export function PartyDetail() {
             <span className="font-semibold">{party.myGuardian ?? 'Not set'}</span>
           </div>
 
-          <p className="mt-6 pb-4 text-center text-sm text-ink-faint">Locations from this party were deleted when it ended.</p>
+          <p className="mt-6 pb-4 text-center text-base text-ink-faint">Locations from this party were deleted when it ended.</p>
         </>
       )}
     </Screen>

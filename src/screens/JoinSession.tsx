@@ -5,7 +5,8 @@ import { Avatar } from '@/components/Avatar'
 import { GuardianSheet } from '@/components/GuardianSheet'
 import { ChevronRightIcon, QrIcon } from '@/components/icons'
 import { QrScanner } from '@/components/QrScanner'
-import { AppHeader, ErrorText, Eyebrow, Screen, Title, inputClass } from '@/components/ui'
+import { Header, ErrorText, Screen, Title, inputClass } from '@/components/ui'
+import { buttonClass } from '@/components/buttons'
 import { firstName, formatCode } from '@/lib/format'
 import { profileContacts } from '@/lib/profile'
 import { supabase } from '@/lib/supabase'
@@ -80,8 +81,7 @@ export function JoinSession() {
 
   return (
     <Screen>
-      <AppHeader back="/" />
-      <Eyebrow tone="orange">Join</Eyebrow>
+      <Header title="Join" back="/" />
       <Title className="mt-1">Is this your group?</Title>
 
       <label className="mt-5 block">
@@ -108,7 +108,7 @@ export function JoinSession() {
       {preview && (
         <div className="mt-4 rounded-xl2 bg-bg-card p-5">
           <p className="text-2xl font-bold">{preview.party_name || `${host}'s party`}</p>
-          {preview.party_name && <p className="text-sm text-ink-dim">Started by {host}</p>}
+          {preview.party_name && <p className="text-base text-ink-dim">Started by {host}</p>}
           {preview.member_names && preview.member_names.length > 0 && (
             <>
               <div className="mt-3 flex -space-x-2">
@@ -123,7 +123,7 @@ export function JoinSession() {
             {preview.venue_name ? `${preview.venue_name} • ` : 'Until '}
             {formatClock(preview.end_time)}
           </p>
-          <p className="mt-2 text-sm text-ink-dim">Stays open until everyone gets home.</p>
+          <p className="mt-2 text-base text-ink-dim">Stays open until everyone gets home.</p>
         </div>
       )}
 
@@ -134,7 +134,7 @@ export function JoinSession() {
         >
           <span className="min-w-0 flex-1">
             <span className="block font-semibold">{guardian ? `${guardian.name} • Guardian` : 'Choose a guardian'}</span>
-            <span className="block text-sm text-ink-dim">Your at-home contact</span>
+            <span className="block text-base text-ink-dim">Your at-home contact</span>
           </span>
           <ChevronRightIcon width={20} height={20} className="text-ink-dim" />
         </button>
@@ -148,11 +148,11 @@ export function JoinSession() {
         <button
           disabled={!preview || busy}
           onClick={() => setSheet('join')}
-          className="min-h-tap w-full rounded-xl2 bg-accent-pink text-lg font-semibold text-white active:scale-[0.98] disabled:bg-disabled"
+          className={buttonClass('primary')}
         >
           {preview ? `Join ${host}'s party` : 'Join party'}
         </button>
-        <p className="mt-3 text-center text-sm text-ink-dim">Location shares after you join.</p>
+        <p className="mt-3 text-center text-base text-ink-dim">Location shares after you join.</p>
       </div>
 
       <GuardianSheet

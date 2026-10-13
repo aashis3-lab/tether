@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { errorText } from '@/lib/toast'
+import { buttonClass } from './buttons'
 
 interface SmsRow {
   id: string
@@ -76,11 +77,11 @@ export function SmsCard() {
   return (
     <div className="mt-5 rounded-xl2 bg-bg-card p-4">
       <p className="text-sm font-bold uppercase tracking-wide text-accent-orange">Text messages</p>
-      <p className="mt-1 text-sm text-ink-dim">Your guardian gets a text when you press HELP, when an alert reaches them, and when everyone is home.</p>
+      <p className="mt-1 text-base text-ink-dim">Your guardian gets a text when you press HELP, when an alert reaches them, and when everyone is home.</p>
       <button
         onClick={sendTest}
         disabled={busy}
-        className="mt-3 min-h-tap w-full rounded-xl2 bg-brand text-lg font-bold text-white disabled:opacity-60"
+        className={`mt-3 ${buttonClass('primary')}`}
       >
         {busy ? 'Sending...' : 'Send test text'}
       </button>

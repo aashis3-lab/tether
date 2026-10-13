@@ -24,7 +24,7 @@ export function InviteCard({ code }: { code: string }) {
       <div className="p-5">
         <p className="text-xs font-bold uppercase tracking-wide text-ink-dim">Invite friends</p>
         <p className="mt-2 text-4xl font-extrabold tracking-wide">{formatCode(code)}</p>
-        <p className="mt-2 break-all text-sm text-ink-dim">{link.replace(/^https?:\/\//, '')}</p>
+        <p className="mt-2 break-all text-base text-ink-dim">{link.replace(/^https?:\/\//, '')}</p>
         {import.meta.env.DEV && inviteLinkIsLocalOnly() && (
           <p className="mt-2 rounded-lg bg-status-checkin/15 p-2 text-sm text-status-checkin">
             This link points at localhost, so it only works on this computer. Friends can still type the code if they open

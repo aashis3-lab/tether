@@ -37,7 +37,7 @@ export function WalletSheet({
           ))}
         </dl>
       </div>
-      <p className="mt-3 text-sm text-ink-dim">Show this screen if someone is helping you.</p>
+      <p className="mt-3 text-base text-ink-dim">Show this screen if someone is helping you.</p>
     </Sheet>
   )
 }

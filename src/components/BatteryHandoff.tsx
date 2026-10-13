@@ -6,7 +6,8 @@ import { hasLocation, placeName } from '@/lib/geo'
 import { formatClock } from '@/lib/time'
 import type { Alert, Member } from '@/lib/types'
 import { ArrowLeftIcon, BatteryIcon, UsersIcon } from './icons'
-import { Eyebrow, InfoCard, headerButton } from './ui'
+import { Eyebrow, InfoCard } from './ui'
+import { buttonClass } from './buttons'
 
 /**
  * Low-battery buddy handoff (rule C), shown to the friend it's aimed at.
@@ -39,11 +40,15 @@ export function BatteryHandoff({
   return (
     <div className="fixed inset-0 z-[2000] flex justify-center bg-bg">
       <div className="flex w-full max-w-app flex-col overflow-y-auto px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
-        <div className="mb-5 grid min-h-tap grid-cols-[3rem_1fr_3rem] items-center">
-          <button aria-label="Not now" onClick={onClose} className={headerButton}>
-            <ArrowLeftIcon width={20} height={20} />
+        <div className="mb-4 grid min-h-tap grid-cols-[3.25rem_1fr_3.25rem] items-center">
+          <button
+            aria-label="Not now"
+            onClick={onClose}
+            className="-ml-2 flex h-[52px] w-[52px] items-center justify-center rounded-full text-ink active:bg-white/10"
+          >
+            <ArrowLeftIcon width={26} height={26} strokeWidth={2.25} />
           </button>
-          <p className="text-center text-xl font-bold tracking-tight text-accent-pink">tether</p>
+          <h1 className="text-center text-xl font-bold tracking-tight">Phone dying</h1>
         </div>
 
         <Eyebrow>{level != null ? `${level}% battery` : 'Phone dying'}</Eyebrow>
@@ -75,12 +80,12 @@ export function BatteryHandoff({
               await tryOrToast("Couldn't confirm", () => claimAlert(alert.id))
               setBusy(false)
             }}
-            className="flex min-h-tap w-full items-center justify-center gap-3 rounded-xl2 bg-brand text-lg font-bold text-white active:scale-[0.98]"
+            className={buttonClass('primary')}
           >
             <UsersIcon width={22} height={22} />
             I'm staying with {name}
           </button>
-          <p className="mt-3 text-center text-sm text-ink-dim">Acknowledge so the group and {guardian} know you're the buddy.</p>
+          <p className="mt-3 text-center text-base text-ink-dim">Acknowledge so the group and {guardian} know you're the buddy.</p>
         </div>
       </div>
     </div>

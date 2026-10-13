@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { formatPhone } from '@/auth/phoneAuth'
 import { CarIcon, ChatIcon, PhoneIcon } from '@/components/icons'
 import { useNavigate } from 'react-router-dom'
-import { AppHeader, ErrorText, Eyebrow, Screen, Title } from '@/components/ui'
+import { Header, ErrorText, Screen, Title } from '@/components/ui'
 import { errorText } from '@/lib/toast'
 import { firstName } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
@@ -93,9 +93,8 @@ export function GetHomeScreen() {
 
   return (
     <Screen>
-      <AppHeader back={`/session/${session.id}`} />
-      <Eyebrow tone="orange">Going home</Eyebrow>
-      <Title className="mt-1">Let's get you home</Title>
+      <Header title="Going home" back={`/session/${session.id}`} />
+      <Title>Let's get you home</Title>
 
       <p className="mb-2 mt-5 text-sm font-semibold text-accent-orange">Destination</p>
       {profile?.home_address ? (
@@ -149,7 +148,7 @@ export function GetHomeScreen() {
         {me?.status === 'home' ? (
           <>
             <p className="text-center text-lg font-semibold text-status-calm">You're home. Thanks for checking in.</p>
-            <p className="mt-1 text-center text-sm text-ink-dim">The party stays open until everyone is home.</p>
+            <p className="mt-1 text-center text-base text-ink-dim">The party stays open until everyone is home.</p>
             <button
               onClick={() => navigate('/', { replace: true })}
               className="mt-4 min-h-tap w-full rounded-xl2 bg-white text-lg font-bold text-black active:scale-[0.98]"
@@ -172,7 +171,7 @@ export function GetHomeScreen() {
             >
               <PhoneIcon width={22} height={22} /> Call SafeRide
             </a>
-            <p className="mb-3 mt-1 text-center text-xs text-ink-faint">{formatPhone(SAFERIDE_PHONE)}</p>
+            <p className="mb-3 mt-1 text-center text-sm text-ink-faint">{formatPhone(SAFERIDE_PHONE)}</p>
             {uberUrl && lyftUrl && (
               <div className="grid grid-cols-2 gap-3">
                 <a
@@ -196,7 +195,7 @@ export function GetHomeScreen() {
               </div>
             )}
             {uberUrl && (
-              <p className="mt-1 text-center text-xs text-ink-faint">Pickup: {myPos ? 'where you are now' : 'your current location'}. Drop-off: home.</p>
+              <p className="mt-1 text-center text-sm text-ink-faint">Pickup: {myPos ? 'where you are now' : 'your current location'}. Drop-off: home.</p>
             )}
             <button
               disabled={busy || heading}

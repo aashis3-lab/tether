@@ -135,7 +135,7 @@ export function GroupWidget({
                   {timer && <span className="ml-1 rounded-full bg-white/10 px-1.5 text-xs text-ink">{timer}</span>}
                 </p>
               </div>
-              <div className="shrink-0 text-right text-xs text-ink-dim">
+              <div className="shrink-0 text-right text-sm text-ink-dim">
                 {m.id !== me?.id && myPos && hasLocation(m) && <p>{formatDistance(distanceM(myPos, m))}</p>}
                 <p>{m.status === 'home' ? '' : hasLocation(m) ? timeAgo(m.last_updated) : 'no location'}</p>
               </div>

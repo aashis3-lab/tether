@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
 import { CheckCircleIcon, PinIcon } from '@/components/icons'
-import { AppHeader, Button, ErrorText, Eyebrow, Screen, Sheet, Title, inputClass } from '@/components/ui'
+import { Header, Button, ErrorText, Screen, Sheet, Title, inputClass } from '@/components/ui'
 import { ACTIVITIES, activityTimeLeft, liveActivity, type ActivityDef, type ActivityKey } from '@/lib/activities'
 import { raiseAlert } from '@/lib/alerts'
 import { firstName } from '@/lib/format'
@@ -77,9 +77,8 @@ export function UpdateScreen() {
 
   return (
     <Screen>
-      <AppHeader back={back} />
-      <Eyebrow>Update</Eyebrow>
-      <Title className="mt-1">What's happening?</Title>
+      <Header title="Status" back={back} />
+      <Title>What's happening?</Title>
       <p className="mt-1 text-ink-dim">
         {current ? (
           <>
@@ -177,13 +176,13 @@ export function UpdateScreen() {
         >
           Leaving together
         </Button>
-        <p className="mt-2 text-center text-sm text-ink-dim">Keeps the left-alone alert quiet.</p>
+        <p className="mt-2 text-center text-base text-ink-dim">Keeps the left-alone alert quiet.</p>
       </Sheet>
 
       {/* Leaving with someone new: their name (checks stay on). */}
       <Sheet open={picker === 'leaving_new'} onClose={() => setPicker(null)} title="Leaving with someone new">
         <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Their name" className={inputClass} autoFocus />
-        <p className="mt-2 text-sm text-ink-dim">They're not in your group, so automatic check-ins stay on.</p>
+        <p className="mt-2 text-base text-ink-dim">They're not in your group, so automatic check-ins stay on.</p>
         <Button
           className="mt-4"
           disabled={!newName.trim() || busy !== null}

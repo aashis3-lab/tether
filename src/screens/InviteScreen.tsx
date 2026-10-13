@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { InviteCard } from '@/components/InviteCard'
-import { AppHeader, Eyebrow, Screen, Title } from '@/components/ui'
+import { Header, Eyebrow, Screen, Title } from '@/components/ui'
+import { buttonClass } from '@/components/buttons'
 import { useSessionCtx } from './session/context'
 
 /** "Make a plan", share the code right after starting a party. */
@@ -12,7 +13,7 @@ export function InviteScreen() {
 
   return (
     <Screen>
-      <AppHeader back={`/session/${session.id}`} />
+      <Header title="Invite friends" back={`/session/${session.id}`} />
       <Eyebrow tone="orange">{first ? `${first}'s party` : 'Party'}</Eyebrow>
       <Title className="mb-5 mt-1">{session.name || 'Invite your friends'}</Title>
       <InviteCard code={session.join_code} />
@@ -24,7 +25,7 @@ export function InviteScreen() {
       <div className="mt-auto pt-8">
         <button
           onClick={() => navigate(`/session/${session.id}`, { replace: true })}
-          className="min-h-tap w-full rounded-xl2 bg-accent-orange text-lg font-semibold text-white active:scale-[0.98]"
+          className={buttonClass('primary')}
         >
           Start this night
         </button>

@@ -202,7 +202,7 @@ export function ActiveSession() {
               </button>
             </div>
 
-            <p className="mt-4 text-center text-sm text-ink-faint">Party ends {formatClock(session.end_time)}</p>
+            <p className="mt-4 text-center text-base text-ink-faint">Party ends {formatClock(session.end_time)}</p>
             <div className="mt-3 flex items-center justify-center gap-2 text-ink-faint">
               <img src="/icons/logo-mark.png" alt="" className="h-6 w-auto" />
               <span className="font-bold tracking-tight">tether</span>
@@ -328,7 +328,7 @@ function PickOnMap({
           <Button big className="mt-3" disabled={busy || !spot} onClick={add}>
             {busy ? 'Adding…' : 'Add this spot'}
           </Button>
-          <Button variant="ghost" className="mt-1" onClick={onCancel}>
+          <Button variant="text" className="mt-1" onClick={onCancel}>
             Cancel
           </Button>
         </div>

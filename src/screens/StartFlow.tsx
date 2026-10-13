@@ -3,7 +3,8 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { GuardianPicker } from '@/components/GuardianPicker'
 import { NightEndsCalendar } from '@/components/NightEndsCalendar'
-import { AppHeader, Button, ErrorText, Screen, Title, inputClass } from '@/components/ui'
+import { Header, Button, ErrorText, Screen, Title, inputClass } from '@/components/ui'
+import { buttonClass } from '@/components/buttons'
 import { errorText } from '@/lib/toast'
 import { clearDraft, updateDraft, useNightDraft } from '@/lib/nightDraft'
 import { rememberDestinations } from '@/lib/places'
@@ -37,7 +38,7 @@ export function StartWhen() {
 
   return (
     <Screen>
-      <AppHeader back="/start/where" right={false} />
+      <Header title="Start a party" back="/start/where" />
       <StartProgress step={2} />
       <Title>When does the night end?</Title>
       <p className="mb-5 mt-1 text-lg text-ink-dim">Location sharing stops then, even if you forget.</p>
@@ -76,7 +77,7 @@ export function StartGuardian() {
 
   return (
     <Screen>
-      <AppHeader back="/start/when" right={false} />
+      <Header title="Start a party" back="/start/when" />
       <StartProgress step={3} />
       <Title>Who's your guardian tonight?</Title>
       <p className="mb-5 mt-1 text-lg text-ink-dim">A sober person at home. They only hear from us if you need help.</p>
@@ -139,7 +140,7 @@ export function StartName() {
 
   return (
     <Screen>
-      <AppHeader back="/start/guardian" right={false} />
+      <Header title="Start a party" back="/start/guardian" />
       <StartProgress step={4} />
       <Title>Name your party</Title>
       <p className="mb-5 mt-1 text-lg text-ink-dim">Optional. Friends see it when they join.</p>
@@ -177,11 +178,11 @@ export function StartName() {
         <button
           disabled={busy}
           onClick={start}
-          className="min-h-[64px] w-full rounded-2xl bg-brand text-xl font-bold text-white shadow-glow transition active:scale-[0.98] disabled:opacity-60"
+          className={buttonClass('primary', true)}
         >
           {busy ? 'Starting the party...' : 'Start the party'}
         </button>
-        {!name.trim() && venue && <p className="mt-2 text-center text-sm text-ink-dim">Leave it blank to call it "{venue}".</p>}
+        {!name.trim() && venue && <p className="mt-2 text-center text-base text-ink-dim">Leave it blank to call it "{venue}".</p>}
       </div>
     </Screen>
   )

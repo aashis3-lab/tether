@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HoldButton } from '@/components/HoldButton'
 import { PhoneIcon } from '@/components/icons'
-import { AppHeader, ErrorText, Eyebrow, Screen } from '@/components/ui'
+import { Header, ErrorText, Screen } from '@/components/ui'
 import { claimerName, evaluateSession, helpPressed, raiseAlert, resolveAlert } from '@/lib/alerts'
 import { tryOrToast } from '@/lib/toast'
 import { formatPhone } from '@/auth/phoneAuth'
@@ -80,8 +80,7 @@ export function HelpScreen() {
 
   return (
     <Screen>
-      <AppHeader back={`/session/${session.id}`} />
-      <Eyebrow>Help</Eyebrow>
+      <Header title="Help" back={`/session/${session.id}`} />
       <p className="mt-2 rounded-xl2 bg-status-alert/10 px-4 py-3 font-semibold text-status-alert">
         {claimer ? `Your group knows, ${firstName(claimer)} is on it.` : 'Your group has been alerted with your location.'}
       </p>

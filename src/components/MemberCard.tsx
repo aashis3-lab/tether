@@ -39,7 +39,7 @@ export function MemberCard({
         <Avatar name={member.name} url={avatar} size={64} />
         <div className="min-w-0">
           <p className="text-lg font-bold">{memberStatusLabel(member)}</p>
-          <p className="text-sm text-ink-dim">
+          <p className="text-base text-ink-dim">
             {located ? `Updated ${timeAgo(member.last_updated)}` : 'No location yet'}
             {member.battery_level != null && ` · ${member.battery_level}% battery`}
           </p>
@@ -53,7 +53,7 @@ export function MemberCard({
           <IconAction href={directions} label="Directions" icon={<SendIcon width={26} height={26} />} caption={dist ?? undefined} external />
         </div>
       )}
-      {!isMe && !phone && <p className="mt-3 text-center text-sm text-ink-faint">No phone number on their profile.</p>}
+      {!isMe && !phone && <p className="mt-3 text-center text-base text-ink-faint">No phone number on their profile.</p>}
     </Sheet>
   )
 }
@@ -80,7 +80,7 @@ function IconAction({
       >
         {icon}
       </span>
-      <span className="mt-1 block text-xs text-ink-dim">{caption ?? ' '}</span>
+      <span className="mt-1 block text-sm text-ink-dim">{caption ?? ' '}</span>
     </>
   )
   return href ? (

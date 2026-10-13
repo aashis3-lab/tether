@@ -110,12 +110,12 @@ export function CheckInOverlay({ checkIn, me }: { checkIn: CheckIn; me: Member }
               key={o.response}
               disabled={busy}
               onClick={() => answer(o.response)}
-              className={`flex w-full items-center gap-3 rounded-xl2 px-5 text-left font-bold active:scale-[0.98] disabled:opacity-60 ${
+              className={`flex w-full items-center gap-3 rounded-xl2 px-5 text-left font-bold active:scale-[0.98] disabled:opacity-40 ${
                 o.style === 'primary'
-                  ? 'min-h-tap justify-center bg-brand text-xl text-white'
+                  ? 'min-h-tap justify-center bg-white text-xl text-black'
                   : o.style === 'outline'
-                    ? 'min-h-tap border border-white/20 bg-bg-card text-xl'
-                    : 'min-h-[84px] border border-white/20 bg-bg-card text-2xl text-status-alert'
+                    ? 'min-h-tap border-2 border-white/40 text-xl'
+                    : 'min-h-[84px] justify-center bg-danger text-2xl text-white'
               }`}
             >
               {o.icon}

@@ -1,9 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { Avatar } from '@/components/Avatar'
 import { ChevronRightIcon, GearIcon, HomeIcon, PhoneIcon, ScanIcon, ShieldIcon, UsersIcon } from '@/components/icons'
-import { Screen, Spinner, headerButton } from '@/components/ui'
+import { Header, Screen, Spinner } from '@/components/ui'
+import { buttonClass } from '@/components/buttons'
 import { WalletSheet } from '@/components/WalletSheet'
 import { useActiveSessionId } from '@/hooks/useSession'
 import { PartyCard } from '@/components/PartyCard'
@@ -41,15 +42,11 @@ export function Home() {
   if (sessionId) return <Navigate to={`/session/${sessionId}`} replace />
 
   return (
-    <Screen className="pt-[max(1.25rem,env(safe-area-inset-top))]">
-      <div className="flex justify-end">
-        <Link to="/settings" aria-label="Settings" className={headerButton}>
-          <GearIcon width={20} height={20} />
-        </Link>
-      </div>
+    <Screen>
+      <Header title="Tether" />
 
       {/* You */}
-      <div className="-mt-4 flex flex-col items-center text-center">
+      <div className="flex flex-col items-center text-center">
         <button onClick={() => navigate('/settings')} aria-label="Edit profile picture" className="rounded-full">
           <Avatar name={profile?.name ?? '?'} url={profile?.avatar_url} size={112} ring="ring-4 ring-bg" />
         </button>
@@ -58,20 +55,14 @@ export function Home() {
       </div>
 
       {/* Start / Join */}
-      <div className="mt-6 grid grid-cols-[1.4fr_1fr] gap-3">
-        <button
-          onClick={() => navigate('/start/where')}
-          className="flex min-h-[72px] items-center justify-center gap-2 rounded-2xl bg-brand px-3 text-lg font-bold text-white shadow-glow transition active:scale-[0.97]"
-        >
-          <UsersIcon width={22} height={22} />
+      <div className="mt-6 flex flex-col gap-3">
+        <button onClick={() => navigate('/start/where')} className={`${buttonClass('primary', true)} min-h-[76px] text-2xl`}>
+          <UsersIcon width={26} height={26} strokeWidth={2.25} />
           Start a party
         </button>
-        <button
-          onClick={() => navigate('/join')}
-          className="flex min-h-[72px] items-center justify-center gap-2 rounded-2xl border border-white/15 bg-bg-card px-3 text-lg font-bold transition active:scale-[0.97]"
-        >
-          <ScanIcon width={20} height={20} className="text-ink-dim" />
-          Join code
+        <button onClick={() => navigate('/join')} className={buttonClass('secondary')}>
+          <ScanIcon width={22} height={22} />
+          Join with a code
         </button>
       </div>
 
@@ -82,7 +73,7 @@ export function Home() {
         >
           <span className="flex-1">
             <span className="block font-bold">{openParty.name ?? 'Your party'} is still going</span>
-            <span className="block text-sm text-ink-dim">You're home. Tap to keep an eye on the group.</span>
+            <span className="block text-base text-ink-dim">You're home. Tap to keep an eye on the group.</span>
           </span>
           <ChevronRightIcon width={20} height={20} className="text-ink-dim" />
         </button>
@@ -106,7 +97,7 @@ export function Home() {
       ) : history.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-white/15 p-5 text-center">
           <p className="font-semibold">No parties yet</p>
-          <p className="mt-1 text-sm text-ink-dim">Start one and it will show up here.</p>
+          <p className="mt-1 text-base text-ink-dim">Start one and it will show up here.</p>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
@@ -117,10 +108,11 @@ export function Home() {
       )}
 
       {/* Quick info: icon tiles */}
-      <div className="mt-8 grid grid-cols-3 gap-3 pb-4">
-        <Tile icon={<HomeIcon width={26} height={26} />} label="Home" onClick={() => navigate('/settings?edit=home')} />
-        <Tile icon={<PhoneIcon width={26} height={26} />} label="Contact" onClick={() => navigate('/settings?edit=contacts')} />
+      <div className="mt-8 grid grid-cols-2 gap-3 pb-4">
         <Tile icon={<ShieldIcon width={26} height={26} />} label="Safety card" onClick={() => setWallet(true)} />
+        <Tile icon={<HomeIcon width={26} height={26} />} label="Home address" onClick={() => navigate('/settings?edit=home')} />
+        <Tile icon={<PhoneIcon width={26} height={26} />} label="Contacts" onClick={() => navigate('/settings?edit=contacts')} />
+        <Tile icon={<GearIcon width={26} height={26} />} label="Settings" onClick={() => navigate('/settings')} />
       </div>
 
       <WalletSheet open={wallet} onClose={() => setWallet(false)} profile={profile} me={undefined} />
@@ -132,7 +124,7 @@ function Tile({ icon, label, onClick }: { icon: ReactNode; label: string; onClic
   return (
     <button
       onClick={onClick}
-      className="flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl bg-bg-card text-sm font-semibold transition active:scale-95"
+      className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-2xl bg-bg-card text-base font-semibold transition active:scale-95"
     >
       <span className="text-accent-orange">{icon}</span>
       {label}

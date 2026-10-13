@@ -152,6 +152,7 @@ export function IncomingAlerts({
       {mode === 'overlay' && incoming && (
         <AlertOverlay
           key={incoming.id + incoming.level}
+          tone={incoming.level === 'ping' ? 'findMe' : 'alert'}
           title={alertTitle(incoming, sender?.name ?? 'A friend')}
           body={
             <>

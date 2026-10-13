@@ -277,7 +277,7 @@ function PracticeAlert({ onDone, onBack }: { onDone: () => void; onBack: () => v
           >
             Try again
           </Button>
-          <Button variant="ghost" onClick={onBack}>
+          <Button variant="text" onClick={onBack}>
             Back
           </Button>
         </div>

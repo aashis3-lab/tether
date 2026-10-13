@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeftIcon, UserIcon, XIcon } from './icons'
+import { buttonClass, type ButtonVariant } from './buttons'
+import { ArrowLeftIcon, XIcon } from './icons'
 
 export function Screen({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
@@ -10,51 +11,13 @@ export function Screen({ children, className = '' }: { children: ReactNode; clas
   )
 }
 
-export function TopBar({ title, back }: { title?: string; back?: string | true }) {
-  const navigate = useNavigate()
-  return (
-    <div className="mb-4 flex min-h-tap items-center gap-2">
-      {back && (
-        <button
-          aria-label="Back"
-          onClick={() => (back === true ? navigate(-1) : navigate(back))}
-          className="tap-target -ml-3 flex items-center justify-center rounded-full text-2xl text-ink-dim active:bg-bg-raised"
-        >
-          ←
-        </button>
-      )}
-      {title && <h1 className="text-xl font-semibold">{title}</h1>}
-    </div>
-  )
-}
-
-type Variant = 'primary' | 'gradient' | 'secondary' | 'danger' | 'ghost'
-
-// Styles follow /designs: solid pink primary ("Verify"), pink→orange hero
-// ("Start a party"), outlined secondary ("Send a new code"), red danger
-// ("Add another emergency contact"). Disabled primary turns solid gray.
-const variants: Record<Variant, string> = {
-  primary: 'bg-accent-pink text-white disabled:bg-disabled',
-  gradient: 'bg-brand text-white disabled:opacity-40',
-  secondary: 'bg-bg-card text-ink border border-white/50 disabled:opacity-40',
-  danger: 'bg-danger text-white disabled:opacity-40',
-  ghost: 'bg-transparent text-ink-dim disabled:opacity-40',
-}
-
 export function Button({
   variant = 'primary',
   big,
   className = '',
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; big?: boolean }) {
-  return (
-    <button
-      {...props}
-      className={`w-full min-h-tap rounded-xl2 px-5 font-semibold transition active:scale-[0.98] ${
-        big ? 'py-5 text-xl' : 'text-lg'
-      } ${variants[variant]} ${className}`}
-    />
-  )
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; big?: boolean }) {
+  return <button {...props} className={`${buttonClass(variant, big)} ${className}`} />
 }
 
 export const inputClass =
@@ -143,47 +106,30 @@ export function Spinner() {
 }
 
 /**
- * Top bar from the designs: rounded-square back button (or a custom left
- * button), "tether" wordmark centered, profile button → Settings.
+ * The one page header: back arrow on the left, page name centered, nothing
+ * on the right. `back` is a path, or true for browser back; omit it on
+ * root pages.
  */
-export function AppHeader({
-  back,
-  left,
-  right = true,
-}: {
-  back?: string | true
-  left?: ReactNode
-  right?: boolean
-}) {
+export function Header({ title, back }: { title: string; back?: string | true }) {
   const navigate = useNavigate()
   return (
-    <div className="mb-5 grid min-h-tap grid-cols-[3rem_1fr_3rem] items-center">
+    <div className="mb-4 grid min-h-tap grid-cols-[3.25rem_1fr_3.25rem] items-center">
       <div>
-        {left ??
-          (back && (
-            <button
-              aria-label="Back"
-              onClick={() => (back === true ? navigate(-1) : navigate(back))}
-              className={headerButton}
-            >
-              <ArrowLeftIcon width={20} height={20} />
-            </button>
-          ))}
-      </div>
-      <p className="text-center text-xl font-bold tracking-tight text-accent-pink">tether</p>
-      <div className="flex justify-end">
-        {right && (
-          <button aria-label="Settings" onClick={() => navigate('/settings')} className={headerButton}>
-            <UserIcon width={20} height={20} />
+        {back && (
+          <button
+            aria-label="Back"
+            onClick={() => (back === true ? navigate(-1) : navigate(back))}
+            className="-ml-2 flex h-[52px] w-[52px] items-center justify-center rounded-full text-ink active:bg-white/10"
+          >
+            <ArrowLeftIcon width={26} height={26} strokeWidth={2.25} />
           </button>
         )}
       </div>
+      <h1 className="truncate text-center text-xl font-bold tracking-tight">{title}</h1>
+      <div />
     </div>
   )
 }
-
-export const headerButton =
-  'flex h-11 w-11 items-center justify-center rounded-xl2 border border-white/15 bg-bg-card text-ink active:scale-95'
 
 /** Small all-caps context label above a title ("DESTINATION", "MAYA'S PARTY"). */
 export function Eyebrow({ children, tone = 'pink' }: { children: ReactNode; tone?: 'pink' | 'orange' }) {
