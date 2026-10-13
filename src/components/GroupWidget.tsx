@@ -3,6 +3,7 @@ import { activityTimeLeft, liveActivity, memberStatusLabel } from '@/lib/activit
 import { ruleMs } from '@/lib/alerts'
 import { firstName } from '@/lib/format'
 import { distanceM, formatDistance, hasLocation, timeAgo } from '@/lib/geo'
+import type { GroupState } from '@/lib/status'
 import type { CheckIn, LatLng, Member } from '@/lib/types'
 import { Avatar } from './Avatar'
 import { ChevronRightIcon } from './icons'
@@ -41,11 +42,16 @@ const RING: Record<'red' | 'yellow', string> = {
 }
 const TEXT: Record<'red' | 'yellow', string> = { red: 'text-status-alert', yellow: 'text-status-checkin' }
 
+const BAR: Record<GroupState['tone'], string> = {
+  calm: 'bg-safe text-black',
+  checkin: 'bg-findme text-black',
+  alert: 'bg-danger text-white',
+}
+
 /**
- * The only place group statuses live during a party: a floating strip over
- * the map with everyone's avatar, name and current status (with a countdown
- * for short-lived ones). You're pinned first, then whoever needs attention.
- * The chevron expands it into a short list, never full screen.
+ * Summary bar over the map: one large line whose color is the group state
+ * (green all together, yellow someone away, red someone needs help). The
+ * chevron expands it into the full list with everyone's status.
  */
 export function GroupWidget({
   members,
@@ -53,7 +59,7 @@ export function GroupWidget({
   checkIns,
   avatars,
   myPos,
-  headline,
+  state,
   partyName,
   onMemberTap,
 }: {
@@ -62,9 +68,9 @@ export function GroupWidget({
   checkIns: CheckIn[]
   avatars: Record<string, string | null>
   myPos: LatLng | null
-  /** e.g. "4/4 accounted for", shown in the expanded header. */
-  headline: string
-  /** Party name, shown small at the top. */
+  /** From groupState(): tone + the big line. */
+  state: GroupState
+  /** Party name, shown small in the expanded list. */
   partyName?: string | null
   /** Tap a member to open their card. */
   onMemberTap?: (m: Member) => void
@@ -86,62 +92,42 @@ export function GroupWidget({
     )
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-bg-card/90 shadow-lg backdrop-blur">
-      {partyName && !open && (
-        <p className="truncate px-3 pt-1.5 text-[11px] font-bold uppercase tracking-wide text-accent-pink">{partyName}</p>
-      )}
-      <div className="flex items-stretch">
-        {open ? (
-          <div className="flex-1 px-4 py-3">
-            <p className="truncate text-xs font-bold uppercase tracking-wide text-accent-pink">{partyName ?? 'Your group'} · {members.length}</p>
-            <p className="font-bold">{headline}</p>
-          </div>
-        ) : (
-          <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto px-2 py-2 [scrollbar-width:none]">
-            {rows.map(({ m, label, timer, attention }) => (
-              <button
-                key={m.id}
-                onClick={() => onMemberTap?.(m)}
-                className="flex w-[4.75rem] shrink-0 flex-col items-center text-center active:scale-95"
-              >
-                <Avatar name={m.name} url={avatars[m.id]} size={38} ring={attention ? RING[attention] : m.id === me?.id ? 'ring-2 ring-accent-pink' : undefined} />
-                <p className="mt-1 w-full truncate text-xs font-semibold">{m.id === me?.id ? 'You' : firstName(m.name)}</p>
-                <p className={`w-full truncate text-[11px] leading-tight ${attention ? TEXT[attention] + ' font-semibold' : 'text-ink-dim'}`}>
-                  {label}
-                  {timer && ` · ${timer}`}
-                </p>
-              </button>
-            ))}
-          </div>
-        )}
-        <button
-          aria-label={open ? 'Collapse group' : 'Expand group'}
-          onClick={() => setOpen((o) => !o)}
-          className="flex w-11 shrink-0 items-center justify-center border-l border-white/10 text-ink-dim"
-        >
-          <ChevronRightIcon width={20} height={20} className={`transition-transform ${open ? '-rotate-90' : 'rotate-90'}`} />
-        </button>
-      </div>
+    <div className="overflow-hidden rounded-2xl shadow-lg">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-label={`${state.line}. ${open ? 'Hide' : 'Show'} everyone`}
+        className={`flex min-h-[68px] w-full items-center gap-3 px-4 py-2 text-left ${BAR[state.tone]}`}
+      >
+        <span className="min-w-0 flex-1" aria-live="polite">
+          <span className="block truncate text-2xl font-extrabold leading-tight">{state.line}</span>
+          {state.sub && <span className="block truncate text-base font-semibold opacity-80">{state.sub}</span>}
+        </span>
+        <ChevronRightIcon width={26} height={26} strokeWidth={2.25} className={`shrink-0 transition-transform ${open ? '-rotate-90' : 'rotate-90'}`} />
+      </button>
 
       {open && (
-        <ul className="max-h-[50vh] divide-y divide-white/5 overflow-y-auto px-3 pb-2">
-          {rows.map(({ m, label, timer, attention }) => (
-            <li key={m.id} onClick={() => onMemberTap?.(m)} className="flex cursor-pointer items-center gap-3 py-2.5 active:opacity-70">
-              <Avatar name={m.name} url={avatars[m.id]} size={42} ring={attention ? RING[attention] : undefined} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{m.id === me?.id ? `${firstName(m.name)} (you)` : m.name}</p>
-                <p className={`truncate text-sm ${attention ? TEXT[attention] + ' font-semibold' : 'text-ink-dim'}`}>
-                  {label}
-                  {timer && <span className="ml-1 rounded-full bg-white/10 px-1.5 text-xs text-ink">{timer}</span>}
-                </p>
-              </div>
-              <div className="shrink-0 text-right text-sm text-ink-dim">
-                {m.id !== me?.id && myPos && hasLocation(m) && <p>{formatDistance(distanceM(myPos, m))}</p>}
-                <p>{m.status === 'home' ? '' : hasLocation(m) ? timeAgo(m.last_updated) : 'no location'}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <div className="border-t border-white/10 bg-bg-card/95 backdrop-blur">
+          {partyName && <p className="truncate px-4 pt-3 text-sm font-bold uppercase tracking-wide text-accent-pink">{partyName} · {members.length}</p>}
+          <ul className="max-h-[50vh] divide-y divide-white/5 overflow-y-auto px-3 pb-2">
+            {rows.map(({ m, label, timer, attention }) => (
+              <li key={m.id} onClick={() => onMemberTap?.(m)} className="flex min-h-[60px] cursor-pointer items-center gap-3 py-2.5 active:opacity-70">
+                <Avatar name={m.name} url={avatars[m.id]} size={44} ring={attention ? RING[attention] : undefined} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-lg font-semibold">{m.id === me?.id ? `${firstName(m.name)} (you)` : m.name}</p>
+                  <p className={`truncate text-base ${attention ? TEXT[attention] + ' font-semibold' : 'text-ink-dim'}`}>
+                    {label}
+                    {timer && <span className="ml-1 rounded-full bg-white/10 px-1.5 text-sm text-ink">{timer}</span>}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right text-sm text-ink-dim">
+                  {m.id !== me?.id && myPos && hasLocation(m) && <p>{formatDistance(distanceM(myPos, m))}</p>}
+                  <p>{m.status === 'home' ? '' : hasLocation(m) ? timeAgo(m.last_updated) : 'no location'}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   )

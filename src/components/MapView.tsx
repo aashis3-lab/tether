@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import { Circle, MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { LatLng, Member, Pin } from '@/lib/types'
 import { hasLocation } from '@/lib/geo'
+import { memberStatusLabel } from '@/lib/activities'
 
 // MapTiler raster tiles in a dark style to match the app theme. {r} becomes
 // "@2x" on high-DPI screens. Without a key, maps show a fallback message.
@@ -12,29 +13,103 @@ const MAPTILER_STYLE = 'dataviz-dark'
 const TILE_URL = `https://api.maptiler.com/maps/${MAPTILER_STYLE}/256/{z}/{x}/{y}{r}.png?key=${MAPTILER_KEY}`
 const TILE_ATTRIB = '&copy; MapTiler &copy; OpenStreetMap contributors'
 
+// Ring colors follow the app's color meanings: green OK, yellow away, red help.
 const STATUS_COLOR: Record<string, string> = {
   together: '#3dd68c',
   home: '#3dd68c',
-  heading_home: '#a9a3b5',
-  separated: '#ffb020',
-  left_alone: '#ffb020',
-  needs_help: '#ff3b3b',
+  heading_home: '#ffffff',
+  separated: '#f5c518',
+  left_alone: '#f5c518',
+  needs_help: '#ff4d4d',
 }
 
-function memberIcon(m: Member, isMe: boolean, avatar?: string | null) {
+const AVATAR_PX = 56
+// Width reserved per person when several stand at the same spot.
+const SLOT_PX = 80
+// After you drag the map yourself, auto-fit waits this long.
+const USER_HOLD_MS = 20_000
+
+/**
+ * Large avatar with "Name · Status" underneath. `dx` shifts it sideways (px)
+ * so people standing together sit side by side instead of overlapping.
+ */
+function memberIcon(m: Member, isMe: boolean, avatar: string | null | undefined, label: string, dx: number) {
   const color = STATUS_COLOR[m.status] ?? '#3dd68c'
-  const initial = m.name.trim().charAt(0).toUpperCase() || '?'
-  const inner = avatar
-    ? `<img src="${avatar.replace(/"/g, '&quot;')}" style="width:100%;height:100%;object-fit:cover;border-radius:9999px" />`
-    : initial
+  const words = m.name.trim().split(/\s+/)
+  const initials = words.slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join('') || '?'
+  const inner = avatar ? `<img src="${escapeHtml(avatar)}" style="width:100%;height:100%;object-fit:cover" />` : initials
+  const name = isMe ? 'You' : words[0]
+  const labelColor = color === '#ffffff' ? '#c8c3d3' : color
   return L.divIcon({
     className: '',
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
-    html: `<div style="width:40px;height:40px;border-radius:9999px;overflow:hidden;background:${
-      isMe ? '#ff4d8d' : '#1b1824'
-    };border:3px solid ${color};color:#fff;display:flex;align-items:center;justify-content:center;font:700 15px Inter,system-ui,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.5)">${inner}</div>`,
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+    html: `<div style="position:absolute;left:${dx}px;top:0;transform:translate(-50%,-${AVATAR_PX / 2}px);display:flex;flex-direction:column;align-items:center;width:${SLOT_PX}px">
+      <div style="width:${AVATAR_PX}px;height:${AVATAR_PX}px;flex-shrink:0;border-radius:9999px;overflow:hidden;background:linear-gradient(135deg,#ff4f8b,#ff8a3d);border:4px solid ${color};color:#fff;display:flex;align-items:center;justify-content:center;font:800 20px Inter,system-ui,sans-serif;box-shadow:0 3px 10px rgba(0,0,0,.6)">${inner}</div>
+      <div style="margin-top:4px;width:max-content;max-width:${SLOT_PX + 36}px;text-align:center;background:rgba(15,14,17,.94);color:#fff;font:700 13px/1.25 Inter,system-ui,sans-serif;padding:3px 8px;border-radius:8px;border:1px solid ${color}">${escapeHtml(name)} ·<br/><span style="font-weight:600;color:${labelColor}">${escapeHtml(label)}</span></div>
+    </div>`,
   })
+}
+
+type Located = Member & LatLng
+
+/**
+ * People whose avatars would overlap on screen at the current zoom are drawn
+ * as one tidy row at their average spot (west to east), so every face and
+ * label stays readable.
+ */
+function layoutMembers(map: L.Map, ms: Located[]): { m: Located; at: LatLng; dx: number }[] {
+  const pt = (m: LatLng) => map.latLngToLayerPoint([m.lat, m.lng])
+  const clusters: Located[][] = []
+  for (const m of ms) {
+    const p = pt(m)
+    const c = clusters.find((cl) =>
+      cl.some((x) => {
+        const q = pt(x)
+        return Math.abs(q.x - p.x) < SLOT_PX * Math.max(1, cl.length) && Math.abs(q.y - p.y) < AVATAR_PX + 40
+      })
+    )
+    if (c) c.push(m)
+    else clusters.push([m])
+  }
+  return clusters.flatMap((c) => {
+    const at = { lat: c.reduce((t, m) => t + m.lat, 0) / c.length, lng: c.reduce((t, m) => t + m.lng, 0) / c.length }
+    return [...c]
+      .sort((a, b) => a.lng - b.lng || a.id.localeCompare(b.id))
+      .map((m, i) => ({ m, at: c.length > 1 ? at : m, dx: (i - (c.length - 1) / 2) * SLOT_PX }))
+  })
+}
+
+/** Member avatars, re-laid out whenever the zoom changes. */
+function MemberMarkers({
+  members,
+  myMemberId,
+  avatars,
+  onMemberClick,
+}: {
+  members: Located[]
+  myMemberId?: string
+  avatars?: Record<string, string | null>
+  onMemberClick?: (memberId: string) => void
+}) {
+  const map = useMap()
+  const [zoom, setZoom] = useState(() => map.getZoom())
+  useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
+  // `zoom` is read so the layout recomputes when it changes.
+  const placed = zoom != null ? layoutMembers(map, members) : []
+  return (
+    <>
+      {placed.map(({ m, at, dx }) => (
+        <Marker
+          key={m.id}
+          position={[at.lat, at.lng]}
+          icon={memberIcon(m, m.id === myMemberId, avatars?.[m.id], memberStatusLabel(m), dx)}
+          zIndexOffset={m.status === 'needs_help' ? 3000 : m.id === myMemberId ? 1000 : 0}
+          eventHandlers={onMemberClick ? { click: () => onMemberClick(m.id) } : undefined}
+        />
+      ))}
+    </>
+  )
 }
 
 const pinIcon = L.divIcon({
@@ -92,7 +167,9 @@ const homeIcon = L.divIcon({
 })
 
 /**
- * 'auto': refit whenever the points meaningfully move (small static maps).
+ * 'auto': refit whenever the points meaningfully move, the covered area
+ *         changes, or `signal` changes. After you drag the map yourself it
+ *         holds still for USER_HOLD_MS, then refits.
  * 'once': fit when points first appear and when `signal` changes ("recenter"),
  *         so a full-screen map you're panning doesn't jump around.
  */
@@ -101,22 +178,50 @@ function FitTo({
   mode,
   signal,
   bottomPad,
+  topPad,
+  paused,
 }: {
   points: LatLng[]
   mode: 'auto' | 'once'
   signal: number
   bottomPad: number
+  topPad: number
+  paused: boolean
 }) {
   const map = useMap()
-  const pointsKey = points.map((p) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join('|')
-  const key = mode === 'auto' ? pointsKey : `${signal}:${points.length > 0}`
+  const [heldUntil, setHeldUntil] = useState(0)
   useEffect(() => {
-    if (points.length === 0) return
-    const pad = { paddingTopLeft: [40, 140] as [number, number], paddingBottomRight: [40, bottomPad + 40] as [number, number] }
+    if (mode !== 'auto') return
+    const onDrag = () => setHeldUntil(Date.now() + USER_HOLD_MS)
+    map.on('dragstart', onDrag)
+    return () => {
+      map.off('dragstart', onDrag)
+    }
+  }, [map, mode])
+  // Release the hold when it runs out; a recenter tap releases it right away.
+  useEffect(() => {
+    if (!heldUntil) return
+    const t = window.setTimeout(() => setHeldUntil(0), Math.max(0, heldUntil - Date.now()))
+    return () => window.clearTimeout(t)
+  }, [heldUntil])
+  useEffect(() => setHeldUntil(0), [signal])
+
+  const pointsKey = points.map((p) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join('|')
+  const key =
+    mode === 'auto'
+      ? `${signal}:${pointsKey}:${Math.round(bottomPad / 40)}:${Math.round(topPad / 40)}:${heldUntil > 0}:${paused}`
+      : `${signal}:${points.length > 0}`
+  useEffect(() => {
+    if (points.length === 0 || paused || heldUntil > 0) return
+    // Extra room so the big avatar labels stay on screen.
+    const pad = {
+      paddingTopLeft: [56, topPad + 40] as [number, number],
+      paddingBottomRight: [56, bottomPad + 72] as [number, number],
+    }
     if (points.length === 1) {
-      map.setView([points[0].lat, points[0].lng], 16)
-      if (bottomPad) map.panBy([0, bottomPad / 2], { animate: false })
-    } else map.fitBounds(L.latLngBounds(points.map((p) => [p.lat, p.lng])), { ...pad, maxZoom: 17 })
+      map.setView([points[0].lat, points[0].lng], 17, { animate: false })
+      map.panBy([0, (bottomPad - topPad) / 2], { animate: false })
+    } else map.fitBounds(L.latLngBounds(points.map((p) => [p.lat, p.lng])), { ...pad, maxZoom: 18 })
     // Refit only when `key` changes (see modes above).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, map])
@@ -218,6 +323,9 @@ export function MapView({
   fitMode = 'auto',
   recenterSignal = 0,
   bottomPad = 0,
+  topPad = 140,
+  fitPaused = false,
+  onMemberClick,
   onLongPress,
   onPinClick,
   onReady,
@@ -239,6 +347,12 @@ export function MapView({
   recenterSignal?: number
   /** Pixels covered at the bottom (e.g. a bottom sheet) to keep points clear of. */
   bottomPad?: number
+  /** Pixels covered at the top (e.g. the summary bar). */
+  topPad?: number
+  /** Stop auto-fitting (e.g. while picking a spot on the map). */
+  fitPaused?: boolean
+  /** Tap a person's avatar. */
+  onMemberClick?: (memberId: string) => void
   onLongPress?: (p: LatLng) => void
   onPinClick?: (pinId: string) => void
   onReady?: (m: L.Map) => void
@@ -280,7 +394,7 @@ export function MapView({
           </p>
         </div>
       )}
-      <FitTo points={fitPoints} mode={fitMode} signal={recenterSignal} bottomPad={bottomPad} />
+      <FitTo points={fitPoints} mode={fitMode} signal={recenterSignal} bottomPad={bottomPad} topPad={topPad} paused={fitPaused} />
       {onLongPress && <LongPress onLongPress={onLongPress} />}
       {onReady && <Ready onReady={onReady} />}
       <InvalidateOnResize />
@@ -310,17 +424,15 @@ export function MapView({
         }
         return <Marker position={[c.lat, c.lng]} icon={groupChip(together.length)} zIndexOffset={2000} />
       })()}
-      {located
+      <MemberMarkers
         // With the group chip on, members who are together are represented by it.
-        .filter((m) => !(showGroupChip && m.status === 'together' && located.filter((x) => x.status === 'together').length >= 2))
-        .map((m) => (
-        <Marker
-          key={m.id}
-          position={[m.lat, m.lng]}
-          icon={memberIcon(m, m.id === myMemberId, avatars?.[m.id])}
-          zIndexOffset={m.id === myMemberId ? 1000 : 0}
-        />
-      ))}
+        members={located.filter(
+          (m) => !(showGroupChip && m.status === 'together' && located.filter((x) => x.status === 'together').length >= 2)
+        )}
+        myMemberId={myMemberId}
+        avatars={avatars}
+        onMemberClick={onMemberClick}
+      />
     </MapContainer>
   )
 }

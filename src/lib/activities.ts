@@ -78,5 +78,5 @@ export function memberStatusLabel(m: Member, now = Date.now()): string {
   }
   if (m.status === 'left_alone') return 'Alone'
   if (m.status === 'separated') return m.status_note || 'Away from group'
-  return 'Accounted for'
+  return 'With group'
 }

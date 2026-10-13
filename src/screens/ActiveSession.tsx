@@ -6,18 +6,19 @@ import { AddPlaceSheet } from '@/components/AddPlaceSheet'
 import { Avatar } from '@/components/Avatar'
 import { BottomSheet, type SheetSnap } from '@/components/BottomSheet'
 import { GroupWidget } from '@/components/GroupWidget'
-import { AlertTriangleIcon, BellIcon, ChatIcon, CrosshairIcon, GearIcon, PinIcon, PlusIcon, ShieldIcon } from '@/components/icons'
+import { AlertTriangleIcon, CrosshairIcon, GearIcon, PinIcon, PlusIcon, SendIcon, ShieldIcon, UserCheckIcon } from '@/components/icons'
 import { IncomingAlerts } from '@/components/IncomingAlerts'
 import { LocationFix } from '@/components/LocationFix'
 import { MapView } from '@/components/MapView'
 import { MemberCard } from '@/components/MemberCard'
 import { PinSheet } from '@/components/PinSheet'
 import { Button, ErrorText, Field } from '@/components/ui'
+import { buttonClass } from '@/components/buttons'
 import { WalletSheet } from '@/components/WalletSheet'
 import { claimerName } from '@/lib/alerts'
 import { firstName } from '@/lib/format'
 import { placeName, reverseGeocode } from '@/lib/geo'
-import { summarize } from '@/lib/status'
+import { groupState } from '@/lib/status'
 import { supabase } from '@/lib/supabase'
 import { formatClock } from '@/lib/time'
 import type { LatLng } from '@/lib/types'
@@ -41,11 +42,21 @@ export function ActiveSession() {
   const [picking, setPicking] = useState(false)
   const [editPinId, setEditPinId] = useState<string | null>(null)
   const mapRef = useRef<L.Map | null>(null)
+  // Height of the summary bar + banners, so the map fits everyone below it.
+  const topRef = useRef<HTMLDivElement>(null)
+  const [topH, setTopH] = useState(140)
+  useEffect(() => {
+    const el = topRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setTopH(el.offsetHeight))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [picking])
   const onReady = useCallback((m: L.Map) => {
     mapRef.current = m
   }, [])
 
-  const summary = summarize(members, myPos)
+  const summary = groupState(members, alerts, me?.id)
   const myAlert = alerts.find((a) => a.member_id === me?.id && a.type === 'manual')
   const myClaimer = myAlert ? claimerName(myAlert, members) : null
   const home =
@@ -69,10 +80,12 @@ export function ActiveSession() {
             pins={pins}
             home={home}
             myMemberId={me?.id}
-            showGroupChip
-            fitMode="once"
+            fitMode="auto"
+            fitPaused={picking}
             recenterSignal={recenter}
             bottomPad={picking ? 0 : sheetH}
+            topPad={picking ? 0 : topH}
+            onMemberClick={(id) => setCardId(id)}
             onLongPress={(p) => startPicking(p)}
             onPinClick={(id) => setEditPinId(id)}
             onReady={onReady}
@@ -96,11 +109,19 @@ export function ActiveSession() {
         />
       ) : (
         <>
-          {/* Group widget, the only place statuses live. */}
+          {/* Summary bar: the group's state in one colored line. */}
           <div className="pointer-events-none fixed inset-x-0 top-0 z-[800] flex justify-center">
-            <div className="w-full max-w-app px-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
+            <div ref={topRef} className="w-full max-w-app px-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
               <div className="pointer-events-auto">
-                <GroupWidget members={members} me={me} checkIns={checkIns} avatars={avatars} myPos={myPos} headline={summary.headline} partyName={session.name ?? pins[0]?.name ?? null} onMemberTap={(m) => setCardId(m.id)} />
+                <GroupWidget members={members} me={me} checkIns={checkIns} avatars={avatars} myPos={myPos} state={summary} partyName={session.name ?? pins[0]?.name ?? null} onMemberTap={(m) => setCardId(m.id)} />
+              </div>
+              <div className="mt-2 flex justify-end">
+                <button
+                  onClick={() => setWallet(true)}
+                  className="pointer-events-auto flex min-h-[44px] items-center gap-2 rounded-full border border-white/20 bg-bg-card/95 px-4 text-base font-bold shadow-lg backdrop-blur active:scale-95"
+                >
+                  <ShieldIcon width={18} height={18} /> Safety card
+                </button>
               </div>
               <div className="pointer-events-auto mt-2">
                 <IncomingAlerts alerts={alerts} members={members} me={me} userId={userId} position={myPos} mode="banners" />
@@ -143,28 +164,25 @@ export function ActiveSession() {
                     {myClaimer ? `${firstName(myClaimer)} is on it` : 'Help request sent'} · Open
                   </button>
                 )}
-                {/* PING, HELP, Update: small circular icon buttons, HELP biggest. */}
-                <div className="flex items-center justify-center gap-6 py-1">
-                  <button
-                    aria-label="Ping"
-                    onClick={() => navigate(`${base}/ping`)}
-                    className="flex h-14 w-14 items-center justify-center rounded-full bg-[#ffb800] text-white shadow-lg active:scale-90"
-                  >
-                    <BellIcon width={26} height={26} strokeWidth={2.2} />
+                {/* Find me, HELP, Status: labeled round buttons, HELP biggest. */}
+                <div className="flex items-start justify-center gap-7 py-1">
+                  <button onClick={() => navigate(`${base}/ping`)} className="flex w-20 flex-col items-center gap-1.5 active:scale-95">
+                    <span className="flex h-16 w-16 items-center justify-center rounded-full bg-findme text-black shadow-lg">
+                      <SendIcon width={28} height={28} strokeWidth={2.25} />
+                    </span>
+                    <span className="text-base font-bold">Find me</span>
                   </button>
-                  <button
-                    aria-label="Help"
-                    onClick={() => navigate(`${base}/help`)}
-                    className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-[#e01414] text-white shadow-[0_0_24px_-4px_rgba(224,20,20,0.8)] active:scale-90"
-                  >
-                    <AlertTriangleIcon width={34} height={34} className="text-white" />
+                  <button onClick={() => navigate(`${base}/help`)} className="flex w-24 flex-col items-center gap-1.5 active:scale-95">
+                    <span className="flex h-[84px] w-[84px] items-center justify-center rounded-full bg-danger text-white shadow-[0_0_24px_-4px_rgba(224,30,30,0.8)]">
+                      <AlertTriangleIcon width={40} height={40} className="text-white" />
+                    </span>
+                    <span className="text-lg font-extrabold tracking-wide text-status-alert">HELP</span>
                   </button>
-                  <button
-                    aria-label="Update"
-                    onClick={() => navigate(`${base}/update`)}
-                    className="flex h-14 w-14 items-center justify-center rounded-full border border-white/15 bg-bg-card text-ink shadow-lg active:scale-90"
-                  >
-                    <ChatIcon width={24} height={24} />
+                  <button onClick={() => navigate(`${base}/update`)} className="flex w-20 flex-col items-center gap-1.5 active:scale-95">
+                    <span className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-white/40 bg-bg-card text-ink shadow-lg">
+                      <UserCheckIcon width={28} height={28} strokeWidth={2} />
+                    </span>
+                    <span className="text-base font-bold">Status</span>
                   </button>
                 </div>
               </div>
@@ -173,16 +191,10 @@ export function ActiveSession() {
             <LocationFix status={gpsStatus} onRetry={retryGps} />
 
             <div className="mt-2 grid grid-cols-2 gap-3">
-              <button
-                onClick={() => navigate(`${base}/invite`)}
-                className="min-h-tap rounded-xl2 border border-white/15 bg-bg-card font-semibold active:scale-[0.98]"
-              >
+              <button onClick={() => navigate(`${base}/invite`)} className={buttonClass('primary')}>
                 Invite friends
               </button>
-              <button
-                onClick={() => navigate(`${base}/home`)}
-                className="min-h-tap rounded-xl2 bg-white font-semibold text-black active:scale-[0.98]"
-              >
+              <button onClick={() => navigate(`${base}/home`)} className={buttonClass('secondary')}>
                 End my night
               </button>
             </div>

@@ -1,12 +1,13 @@
 import { formatClock } from './time'
 import { centroid, distanceM, formatDistance, hasLocation, timeAgo } from './geo'
-import type { LatLng, Member, MemberStatus } from './types'
+import { firstName } from './format'
+import type { Alert, LatLng, Member, MemberStatus } from './types'
 
 export type Tone = 'calm' | 'checkin' | 'alert'
 
 // Never label anyone as intoxicated: these are neutral, location-only words.
 export const STATUS_LABEL: Record<MemberStatus, string> = {
-  together: 'Accounted for',
+  together: 'With group',
   separated: 'Away from the group',
   left_alone: 'Alone',
   heading_home: 'Heading home',
@@ -71,4 +72,51 @@ export function summarize(members: Member[], me: LatLng | null): GroupSummary {
 
 function rank(s: MemberStatus) {
   return { needs_help: 3, left_alone: 2, separated: 2, heading_home: 1, together: 0, home: 0 }[s]
+}
+
+export interface GroupState {
+  tone: Tone
+  /** One big line for the top of the map: "All 4 together", "Maya is away", "Maya needs help". */
+  line: string
+  /** Optional smaller second line ("1 heading home · 1 home"). */
+  sub: string | null
+}
+
+/** "Maya", "Maya and Jake", "Maya, Jake and 2 more". */
+function names(ms: Member[], meId: string | undefined) {
+  const ns = ms.map((m) => (m.id === meId ? 'You' : firstName(m.name)))
+  if (ns.length <= 2) return ns.join(' and ')
+  return `${ns[0]}, ${ns[1]} and ${ns.length - 2} more`
+}
+
+/**
+ * The one-line group state for the map's summary bar. Red when anyone needs
+ * help (or has an open help request), yellow when anyone is away from the
+ * group, otherwise green.
+ */
+export function groupState(members: Member[], alerts: Alert[], meId: string | undefined): GroupState {
+  const out = members.filter((m) => m.status !== 'home')
+  const homeCount = members.length - out.length
+  const heading = out.filter((m) => m.status === 'heading_home').length
+  const subParts = [heading && `${heading} heading home`, homeCount && `${homeCount} home`].filter(Boolean)
+  const sub = subParts.length ? subParts.join(' · ') : null
+
+  const helpIds = new Set(alerts.filter((a) => !a.resolved && a.type === 'manual').map((a) => a.member_id))
+  const help = members.filter((m) => m.status === 'needs_help' || helpIds.has(m.id))
+  if (help.length) {
+    const solo = help.length === 1 && help[0].id !== meId
+    return { tone: 'alert', line: `${names(help, meId)} ${solo ? 'needs' : 'need'} help`, sub }
+  }
+
+  const away = out.filter((m) => m.status === 'separated' || m.status === 'left_alone')
+  if (away.length) {
+    const solo = away.length === 1 && away[0].id !== meId
+    return { tone: 'checkin', line: `${names(away, meId)} ${solo ? 'is' : 'are'} away`, sub }
+  }
+
+  const together = out.filter((m) => m.status === 'together').length
+  if (members.length === 0) return { tone: 'calm', line: 'Loading your group…', sub: null }
+  if (out.length === 0) return { tone: 'calm', line: 'Everyone is home', sub: null }
+  if (members.length === 1) return { tone: 'calm', line: 'Just you so far', sub: 'Invite friends to join' }
+  return { tone: 'calm', line: together === out.length ? `All ${together} together` : `${together} together`, sub }
 }

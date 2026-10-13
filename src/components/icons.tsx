@@ -272,3 +272,10 @@ export const MapPickIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2ZM9 4v14M15 6v14" />
   </Svg>
 )
+
+export const UserCheckIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}>
+    <circle cx="9.5" cy="8" r="3.5" />
+    <path d="M3 20c0-3.6 2.9-6 6.5-6 1.7 0 3.2.5 4.3 1.4M15.5 17.5l2 2 4-4.5" />
+  </Svg>
+)
