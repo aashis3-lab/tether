@@ -27,7 +27,7 @@ interface Preview {
 
 const normalize = (raw: string) => raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
 
-/** "Is this your group?", code or QR, preview, guardian, join. */
+/** "Join a party": code or QR, then "Is this your group?" preview, guardian, join. */
 export function JoinSession() {
   const { code: codeParam } = useParams()
   const { profile } = useAuth()
@@ -82,7 +82,7 @@ export function JoinSession() {
   return (
     <Screen>
       <Header title="Join" back="/" />
-      <Title className="mt-1">Is this your group?</Title>
+      <Title>Join a party</Title>
 
       <label className="mt-5 block">
         <span className="mb-2 block text-sm font-semibold">Invite code</span>
@@ -105,8 +105,9 @@ export function JoinSession() {
         Scan QR
       </button>
 
+      {preview && <h2 className="mt-6 text-2xl font-bold">Is this your group?</h2>}
       {preview && (
-        <div className="mt-4 rounded-xl2 bg-bg-card p-5">
+        <div className="mt-3 rounded-xl2 bg-bg-card p-5">
           <p className="text-2xl font-bold">{preview.party_name || `${host}'s party`}</p>
           {preview.party_name && <p className="text-base text-ink-dim">Started by {host}</p>}
           {preview.member_names && preview.member_names.length > 0 && (

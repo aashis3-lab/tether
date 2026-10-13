@@ -107,3 +107,25 @@ export async function loadHistory(userId: string, limit = 30): Promise<PastParty
 export function partyDate(iso: string) {
   return new Date(iso).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
 }
+
+export interface ActiveParty {
+  id: string
+  name: string
+  endTime: string
+}
+
+/** The party you're in right now, if any (newest first). */
+export async function loadActiveParty(userId: string): Promise<ActiveParty | null> {
+  const { data } = await supabase
+    .from('session_members')
+    .select('session_id, sessions!inner(id, status, created_at, end_time, venue_names, name)')
+    .eq('user_id', userId)
+    .eq('sessions.status', 'active')
+  type Row = {
+    session_id: string
+    sessions: { created_at: string; end_time: string; venue_names: string[] | null; name: string | null }
+  }
+  const row = ((data ?? []) as unknown as Row[]).sort((a, b) => b.sessions.created_at.localeCompare(a.sessions.created_at))[0]
+  if (!row) return null
+  return { id: row.session_id, name: row.sessions.name ?? row.sessions.venue_names?.[0] ?? 'Your party', endTime: row.sessions.end_time }
+}
