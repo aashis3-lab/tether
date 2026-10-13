@@ -4,6 +4,9 @@ import { formatPhone } from '@/auth/phoneAuth'
 import { CarIcon, ChatIcon, PhoneIcon } from '@/components/icons'
 import { useNavigate } from 'react-router-dom'
 import { Header, ErrorText, Screen, Title } from '@/components/ui'
+import { buttonClass } from '@/components/buttons'
+import { HoldButton } from '@/components/HoldButton'
+import { distanceM, formatDistance } from '@/lib/geo'
 import { errorText } from '@/lib/toast'
 import { firstName } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
@@ -14,12 +17,16 @@ import { useSessionCtx } from './context'
 // Real SafeRide dispatch line (override with VITE_SAFERIDE_PHONE).
 const SAFERIDE_PHONE = (import.meta.env.VITE_SAFERIDE_PHONE ?? '').trim() || '+12173848188'
 
+// Farther than this from the saved home, "I'm home" asks once more.
+const HOME_CHECK_M = 200
+
 const homeAt = (m: Member) => (m.rule_state?.home_at as string | undefined) ?? null
 
 /**
  * "Let's get you home", what End my night opens. Ending your night means
  * heading home, not turning protection off: alerts stay on until arrival and
- * the group closes when everyone is home.
+ * the group closes when everyone is home. "I'm home" is press-and-hold, and
+ * double-checks against the saved home address when we know where you are.
  */
 export function GetHomeScreen() {
   const { session, members, me, profile, myPos } = useSessionCtx()
@@ -51,16 +58,24 @@ export function GetHomeScreen() {
     profile?.home_lat != null && profile?.home_lng != null ? { lat: profile.home_lat, lng: profile.home_lng } : null
   const addr = encodeURIComponent(profile?.home_address ?? 'Home')
   // Deep links open the Uber / Lyft app if installed, else their mobile site.
-  const uberUrl = homeLL
-    ? `https://m.uber.com/ul/?action=setPickup${
-        myPos ? `&pickup[latitude]=${myPos.lat}&pickup[longitude]=${myPos.lng}` : '&pickup=my_location'
-      }&dropoff[latitude]=${homeLL.lat}&dropoff[longitude]=${homeLL.lng}&dropoff[nickname]=Home&dropoff[formatted_address]=${addr}`
-    : null
-  const lyftUrl = homeLL
-    ? `https://lyft.com/ride?id=lyft${
-        myPos ? `&pickup[latitude]=${myPos.lat}&pickup[longitude]=${myPos.lng}` : ''
-      }&destination[latitude]=${homeLL.lat}&destination[longitude]=${homeLL.lng}`
-    : null
+  const uberUrl = `https://m.uber.com/ul/?action=setPickup${
+    myPos ? `&pickup[latitude]=${myPos.lat}&pickup[longitude]=${myPos.lng}` : '&pickup=my_location'
+  }${
+    homeLL
+      ? `&dropoff[latitude]=${homeLL.lat}&dropoff[longitude]=${homeLL.lng}&dropoff[nickname]=Home&dropoff[formatted_address]=${addr}`
+      : ''
+  }`
+  const lyftUrl = `https://lyft.com/ride?id=lyft${
+    myPos ? `&pickup[latitude]=${myPos.lat}&pickup[longitude]=${myPos.lng}` : ''
+  }${homeLL ? `&destination[latitude]=${homeLL.lat}&destination[longitude]=${homeLL.lng}` : ''}`
+
+  // "I'm home" sanity check against the saved home (GPS slack included).
+  const awayFromHome = homeLL && myPos ? distanceM(myPos, homeLL) : null
+  const [farConfirm, setFarConfirm] = useState(false)
+  const confirmHome = () => {
+    if (awayFromHome != null && awayFromHome > HOME_CHECK_M) setFarConfirm(true)
+    else void imHome()
+  }
 
   const markHeading = (via: string) =>
     update({ status: 'heading_home', status_note: `Heading home • ${via}`, eta: null, leaving_with: ['solo'] })
@@ -135,10 +150,7 @@ export function GetHomeScreen() {
         </div>
       )}
 
-      <p className="mt-4 text-ink-dim">
-        Ending your night means heading home, not turning protection off. Alerts stay on until you arrive, and the party
-        closes when everyone is home.
-      </p>
+      <p className="mt-4 text-lg font-semibold text-ink">Alerts stay on until you're home.</p>
 
       <div className="mt-3">
         <ErrorText>{error}</ErrorText>
@@ -164,53 +176,71 @@ export function GetHomeScreen() {
           </>
         ) : (
           <>
-            <a
-              href={`tel:${SAFERIDE_PHONE.replace(/[^\d+]/g, '')}`}
-              onClick={() => void markHeading('SafeRide')}
-              className="flex min-h-tap w-full items-center justify-center gap-3 rounded-xl2 bg-brand text-lg font-bold text-white active:scale-[0.98]"
-            >
-              <PhoneIcon width={22} height={22} /> Call SafeRide
-            </a>
-            <p className="mb-3 mt-1 text-center text-sm text-ink-faint">{formatPhone(SAFERIDE_PHONE)}</p>
-            {uberUrl && lyftUrl && (
-              <div className="grid grid-cols-2 gap-3">
-                <a
-                  href={uberUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => void markHeading('Uber')}
-                  className="flex min-h-tap items-center justify-center gap-2 rounded-xl2 border border-white/20 bg-black text-lg font-bold text-white active:scale-[0.98]"
-                >
-                  <CarIcon width={20} height={20} /> Uber
-                </a>
-                <a
-                  href={lyftUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => void markHeading('Lyft')}
-                  className="flex min-h-tap items-center justify-center gap-2 rounded-xl2 bg-[#ff00bf] text-lg font-bold text-white active:scale-[0.98]"
-                >
-                  <CarIcon width={20} height={20} /> Lyft
-                </a>
-              </div>
-            )}
-            {uberUrl && (
-              <p className="mt-1 text-center text-sm text-ink-faint">Pickup: {myPos ? 'where you are now' : 'your current location'}. Drop-off: home.</p>
-            )}
             <button
               disabled={busy || heading}
               onClick={headingHome}
-              className="mt-3 min-h-tap w-full rounded-xl2 border border-white/15 bg-bg-card text-lg font-bold active:scale-[0.98] disabled:opacity-60"
+              className={buttonClass('primary', true)}
             >
               {heading ? 'Heading home: your group can see it' : busy ? 'Saving...' : "I'm heading home"}
             </button>
-            <button
-              disabled={busy}
-              onClick={imHome}
-              className="mt-2 min-h-tap w-full rounded-xl2 border border-white/15 font-semibold active:scale-[0.98] disabled:opacity-60"
-            >
-              {busy ? 'Saving...' : "I'm home"}
-            </button>
+
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <a
+                href={`tel:${SAFERIDE_PHONE.replace(/[^\d+]/g, '')}`}
+                onClick={() => void markHeading('SafeRide')}
+                className={`${buttonClass('secondary')} whitespace-nowrap px-2 !text-base`}
+              >
+                <PhoneIcon width={20} height={20} /> Call SafeRide
+              </a>
+              <a
+                href={uberUrl}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => void markHeading('Uber')}
+                className={`${buttonClass('secondary')} whitespace-nowrap px-2 !text-base`}
+              >
+                <CarIcon width={20} height={20} /> Get a ride
+              </a>
+            </div>
+            <p className="mt-1 text-center text-base text-ink-faint">
+              SafeRide {formatPhone(SAFERIDE_PHONE)} ·{' '}
+              <a href={lyftUrl} target="_blank" rel="noreferrer" onClick={() => void markHeading('Lyft')} className="underline">
+                Lyft instead
+              </a>
+            </p>
+
+            {farConfirm ? (
+              <div className="mt-4 rounded-2xl border-2 border-status-checkin/70 bg-status-checkin/10 p-4" role="alertdialog" aria-labelledby="far-home">
+                <p id="far-home" className="text-lg font-bold">
+                  You look {formatDistance(awayFromHome ?? 0)} from home.
+                </p>
+                <p className="text-base text-ink-dim">Only say you're home once you're inside.</p>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <button onClick={() => setFarConfirm(false)} className={buttonClass('secondary')}>
+                    Not yet
+                  </button>
+                  <button
+                    disabled={busy}
+                    onClick={() => {
+                      setFarConfirm(false)
+                      void imHome()
+                    }}
+                    className={buttonClass('safe')}
+                  >
+                    I'm home
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <HoldButton
+                disabled={busy}
+                onComplete={confirmHome}
+                ariaLabel="I'm home. Press and hold to confirm."
+                className="mt-4 flex min-h-tap w-full items-center justify-center rounded-xl2 border-2 border-white/40 text-lg font-bold disabled:opacity-40"
+              >
+                {busy ? 'Saving...' : "I'm home (hold)"}
+              </HoldButton>
+            )}
             <button onClick={() => navigate(`/session/${session.id}`)} className="mt-1 min-h-[48px] w-full text-ink-dim">
               Back to the map
             </button>
