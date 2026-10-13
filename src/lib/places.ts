@@ -18,7 +18,11 @@ function toDestination(f: Feature): Destination {
 }
 
 async function geocode(query: string, near: LatLng | null, extra = ''): Promise<Destination[]> {
-  if (!KEY || !query.trim()) return []
+  if (!KEY) {
+    if (import.meta.env.DEV) console.warn('[tether] place search off: VITE_MAPTILER_KEY is not set')
+    return []
+  }
+  if (!query.trim()) return []
   // No known spot: let MapTiler bias by the phone's IP location instead.
   const prox = near ? `&proximity=${near.lng},${near.lat}` : '&proximity=ip'
   const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?key=${KEY}${extra.includes('limit=') ? '' : '&limit=6'}${prox}${extra}`
@@ -31,10 +35,31 @@ async function geocode(query: string, near: LatLng | null, extra = ''): Promise<
   }
 }
 
-/** Address / venue search biased to where you are, closest first. */
+// Half-size of the "nearby first" search box (~40 km each way).
+const LOCAL_DEG_LAT = 0.36
+const LOCAL_DEG_LNG = 0.48
+
+/**
+ * Address / venue search biased to where you are. Proximity alone is only a
+ * hint (an exact place name like "Red Lion, PA" can still outrank a bar down
+ * the street), so matches inside a ~40 km box around `near` come first,
+ * closest first, then anything else.
+ */
 export async function searchPlaces(query: string, near: LatLng | null) {
-  const res = await geocode(query, near, '&autocomplete=true&limit=10')
-  return near ? res.sort((x, y) => distM(near, x) - distM(near, y)) : res
+  if (!near) {
+    if (import.meta.env.DEV) console.info('[tether] search not location-biased: no GPS, home address or IP location yet')
+    return geocode(query, null, '&autocomplete=true&limit=10')
+  }
+  const bbox = [near.lng - LOCAL_DEG_LNG, near.lat - LOCAL_DEG_LAT, near.lng + LOCAL_DEG_LNG, near.lat + LOCAL_DEG_LAT]
+    .map((n) => n.toFixed(5))
+    .join(',')
+  const [local, wide] = await Promise.all([
+    geocode(query, near, `&autocomplete=true&limit=10&bbox=${bbox}`),
+    geocode(query, near, '&autocomplete=true&limit=5'),
+  ])
+  const byDistance = (x: Destination, y: Destination) => distM(near, x) - distM(near, y)
+  const far = wide.filter((w) => !local.some((l) => l.name === w.name && distM(l, w) < 100))
+  return [...local.sort(byDistance), ...far.sort(byDistance)].slice(0, 10)
 }
 
 // ---------------------------------------------------------------------------
@@ -239,8 +264,11 @@ export async function approximateLocation(): Promise<LatLng | null> {
   try {
     const res = await fetch(`https://api.maptiler.com/geolocation/ip.json?key=${KEY}`)
     const d = (await res.json()) as { latitude?: number; longitude?: number }
-    return d.latitude != null && d.longitude != null ? { lat: d.latitude, lng: d.longitude } : null
-  } catch {
+    if (d.latitude != null && d.longitude != null) return { lat: d.latitude, lng: d.longitude }
+    if (import.meta.env.DEV) console.info('[tether] IP location unavailable:', d)
+    return null
+  } catch (e) {
+    if (import.meta.env.DEV) console.info('[tether] IP location request failed:', e)
     return null
   }
 }

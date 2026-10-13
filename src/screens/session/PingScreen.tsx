@@ -57,7 +57,7 @@ export function PingScreen() {
 
   return (
     <Screen>
-      <Header title="Find me" back={`/session/${session.id}`} />
+      <Header title="Get help from friends" back={`/session/${session.id}`} />
       <Title>What do you need?</Title>
       <p className="mt-1 text-lg text-ink-dim">Tap one option.</p>
 

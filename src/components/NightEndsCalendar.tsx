@@ -65,24 +65,30 @@ export function NightEndsCalendar({ value, onChange }: { value?: Date; onChange:
     setPm(d.getHours() >= 12)
   }
 
-  // Quick choices: the next 2 AM / 4 AM, 9 AM tomorrow, three hours from now.
+  // Quick choices, always the next upcoming time (never past, never 24 h+):
+  // "Tonight 2 AM" / "Tonight 4 AM" (only while that night is ahead of you),
+  // "9 AM" (or "9 AM tomorrow" before midnight), and three hours from now.
   const nextAt = (h: number) => {
     const d = new Date(now)
     d.setHours(h, 0, 0, 0)
     if (d.getTime() <= now.getTime()) d.setDate(d.getDate() + 1)
     return d
   }
-  const nineTomorrow = new Date(today)
-  nineTomorrow.setDate(today.getDate() + 1)
-  nineTomorrow.setHours(9, 0, 0, 0)
+  const hoursAway = (d: Date) => (d.getTime() - now.getTime()) / 3600_000
+  const tonight = (h: number): [string, Date] | null => {
+    const d = nextAt(h)
+    // At 5 AM the next 2 AM is a whole day off: not "tonight", so don't offer it.
+    return hoursAway(d) <= 14 ? [`Tonight ${h} AM`, d] : null
+  }
+  const nine = nextAt(9)
   const plus3 = new Date(now.getTime() + 3 * 3600_000)
   plus3.setMinutes(Math.ceil(plus3.getMinutes() / 15) * 15, 0, 0)
-  const quick: [string, Date][] = [
-    ['2 AM', nextAt(2)],
-    ['4 AM', nextAt(4)],
-    ['9 AM tomorrow', nineTomorrow],
-    ['In 3 hours', plus3],
-  ]
+  const quick = [
+    tonight(2),
+    tonight(4),
+    [nine.getDate() === now.getDate() ? '9 AM' : '9 AM tomorrow', nine] as [string, Date],
+    ['In 3 hours', plus3] as [string, Date],
+  ].filter((q): q is [string, Date] => q !== null && hoursAway(q[1]) > 0 && hoursAway(q[1]) < 24)
 
   return (
     <div className="rounded-2xl bg-bg-card p-4">

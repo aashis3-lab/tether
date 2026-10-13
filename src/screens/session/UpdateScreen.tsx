@@ -97,15 +97,12 @@ export function UpdateScreen() {
         {STATUS_CHOICES.map((k, i) => {
           const a = def(k)
           const active = current?.key === a.key
-          // "Someone new" is amber so it never looks like leaving with a friend.
-          const tone =
-            a.key === 'leaving_new'
-              ? active
-                ? 'border-status-checkin bg-status-checkin/25'
-                : 'border-status-checkin/70 bg-status-checkin/10'
-              : active
-                ? 'border-white bg-white/15'
-                : 'border-white/10 bg-bg-card'
+          // Only the current status is highlighted. "Someone new" keeps its amber label so it never looks like leaving with a friend.
+          const tone = active
+            ? a.key === 'leaving_new'
+              ? 'border-status-checkin bg-status-checkin/20'
+              : 'border-white bg-white/15'
+            : 'border-white/10 bg-bg-card'
           return (
             <button
               key={a.key}

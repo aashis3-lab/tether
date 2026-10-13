@@ -22,7 +22,7 @@ const DIALS_DEMO = SAFE_911 && Boolean(DEMO_NUMBER)
 const EMERGENCY_NUMBER = DIALS_DEMO ? DEMO_NUMBER : SAFE_911 && import.meta.env.DEV ? '' : '911'
 
 /** Seconds to cancel before HELP actually alerts anyone. */
-const CANCEL_SECONDS = 3
+const CANCEL_SECONDS = 5
 
 const telHref = (n: string) => `tel:${n.replace(/[^\d+]/g, '')}`
 
