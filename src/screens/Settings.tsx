@@ -15,6 +15,7 @@ import { geocode, getCurrentPosition } from '@/lib/geo'
 import { profileContacts } from '@/lib/profile'
 import { supabase } from '@/lib/supabase'
 import { attempt } from '@/lib/toast'
+import { getRideApp, setRideApp, type RideApp } from '@/lib/ridePref'
 import type { Contact, Member, Profile } from '@/lib/types'
 
 type Edit = null | 'phone' | 'contacts' | 'guardian' | 'home' | 'medical' | 'backtap'
@@ -94,6 +95,8 @@ export function Settings() {
         <Row title="Home" detail={profile.home_address ?? 'Not set'} onClick={() => setEdit('home')} />
         <Row title="Medical info" detail={profile.medical_info || 'None'} onClick={() => setEdit('medical')} />
       </div>
+
+      <RideAppCard />
 
       <SmsCard />
 
@@ -347,5 +350,35 @@ function MedicalSheet({ profile, onClose, onSave }: { profile: Profile; onClose:
         {busy ? 'Saving…' : 'Save'}
       </Button>
     </Sheet>
+  )
+}
+
+/** Which app "Get a ride" opens on the Going home screen (this device). */
+function RideAppCard() {
+  const [app, setApp] = useState<RideApp>(getRideApp)
+  const pick = (a: RideApp) => {
+    setRideApp(a)
+    setApp(a)
+  }
+  return (
+    <div className="mt-5 rounded-xl2 bg-bg-card p-4">
+      <p className="text-lg font-bold">Ride app</p>
+      <p className="text-base text-ink-dim">"Get a ride" opens this app.</p>
+      <div className="mt-3 grid grid-cols-2 gap-3" role="radiogroup" aria-label="Ride app">
+        {(['uber', 'lyft'] as const).map((a) => (
+          <button
+            key={a}
+            role="radio"
+            aria-checked={app === a}
+            onClick={() => pick(a)}
+            className={`min-h-tap rounded-xl2 border-2 text-lg font-bold ${
+              app === a ? 'border-white bg-white text-black' : 'border-white/30 text-ink'
+            }`}
+          >
+            {a === 'uber' ? 'Uber' : 'Lyft'}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }

@@ -43,6 +43,8 @@ export function ProfileForm({
   const [locating, setLocating] = useState(false)
   const [geocodeFailed, setGeocodeFailed] = useState(false)
   const [error, setError] = useState('')
+  // Asked once: no home address -> "Add it for directions home?" before saving.
+  const [askedHome, setAskedHome] = useState(Boolean(initial))
 
   const primaryOk = contacts[0].name.trim() && contacts[0].phone.trim()
   const ready = Boolean(name.trim() && primaryOk)
@@ -67,6 +69,10 @@ export function ProfileForm({
 
   async function submit(e: FormEvent) {
     e.preventDefault()
+    if (!homeAddress.trim() && !askedHome) {
+      setAskedHome(true)
+      return
+    }
     setBusy(true)
     setError('')
 
@@ -119,7 +125,22 @@ export function ProfileForm({
               setHome(null)
             }}
             autoComplete="street-address"
+            id="home-address"
           />
+          {askedHome && !initial && !homeAddress.trim() && (
+            <div className="mt-3 rounded-xl2 border-2 border-white/30 p-4" role="alert">
+              <p className="text-lg font-bold">Add your home address?</p>
+              <p className="text-base text-ink-dim">It gives you one-tap directions home. Optional.</p>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <button type="button" onClick={() => document.getElementById('home-address')?.focus()} className="min-h-tap rounded-xl2 bg-white text-lg font-bold text-black">
+                  Add it
+                </button>
+                <button type="submit" className="min-h-tap rounded-xl2 border-2 border-white/40 text-lg font-bold">
+                  Skip
+                </button>
+              </div>
+            </div>
+          )}
           {(geocodeFailed || home) && (
             <button type="button" onClick={useHere} disabled={locating} className="mt-1 min-h-[44px] text-sm font-semibold text-accent-pink">
               {locating ? 'Finding you…' : home ? '✓ Location saved' : "Use where I am right now instead"}
