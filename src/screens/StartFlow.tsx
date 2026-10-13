@@ -177,7 +177,7 @@ export function StartName() {
         <button
           disabled={busy}
           onClick={start}
-          className="min-h-[64px] w-full rounded-2xl bg-gradient-to-r from-accent-pink to-accent-orange text-xl font-bold text-white shadow-glow transition active:scale-[0.98] disabled:opacity-60"
+          className="min-h-[64px] w-full rounded-2xl bg-brand text-xl font-bold text-white shadow-glow transition active:scale-[0.98] disabled:opacity-60"
         >
           {busy ? 'Starting the party...' : 'Start the party'}
         </button>

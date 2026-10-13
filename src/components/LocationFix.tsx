@@ -51,8 +51,13 @@ export function LocationFix({ status, onRetry }: { status: GpsStatus; onRetry: (
       <Sheet open={open} onClose={() => setOpen(false)} title="Turn on location">
         {status === 'insecure' ? (
           <p className="text-lg text-ink-dim">
-            Browsers only share location over https. Open Tether from its https address (during development on a phone, run{' '}
-            <span className="font-mono">npm run dev:phone</span>).
+            Browsers only share location over https. Open Tether from its https address
+            {import.meta.env.DEV && (
+              <>
+                {' '}(during development on a phone, run <span className="font-mono">npm run dev:phone</span>)
+              </>
+            )}
+            .
           </p>
         ) : (
           <>

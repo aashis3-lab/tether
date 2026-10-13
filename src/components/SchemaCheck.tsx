@@ -33,10 +33,12 @@ const PROBES: Probe[] = [
   },
 ]
 
+/** Developer aid: only runs in dev builds, never shown to real users. */
 export function SchemaCheck() {
   const [missing, setMissing] = useState<string[]>([])
 
   useEffect(() => {
+    if (!import.meta.env.DEV) return
     const url = import.meta.env.VITE_SUPABASE_URL
     const key = import.meta.env.VITE_SUPABASE_ANON_KEY
     if (!url || !key) return
@@ -57,7 +59,7 @@ export function SchemaCheck() {
     })
   }, [])
 
-  if (missing.length === 0) return null
+  if (!import.meta.env.DEV || missing.length === 0) return null
   return (
     <div className="fixed inset-0 z-[6000] flex justify-center bg-bg/95 backdrop-blur">
       <div className="flex w-full max-w-app flex-col justify-center px-6">

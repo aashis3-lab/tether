@@ -75,7 +75,7 @@ export function BatteryHandoff({
               await tryOrToast("Couldn't confirm", () => claimAlert(alert.id))
               setBusy(false)
             }}
-            className="flex min-h-tap w-full items-center justify-center gap-3 rounded-xl2 bg-gradient-to-r from-accent-pink to-accent-orange text-lg font-bold text-white active:scale-[0.98]"
+            className="flex min-h-tap w-full items-center justify-center gap-3 rounded-xl2 bg-brand text-lg font-bold text-white active:scale-[0.98]"
           >
             <UsersIcon width={22} height={22} />
             I'm staying with {name}

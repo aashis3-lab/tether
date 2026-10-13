@@ -27,7 +27,7 @@ export function WalletSheet({
   ]
   return (
     <Sheet open={open} onClose={onClose} title="Safety card">
-      <div className="overflow-hidden rounded-xl2 bg-gradient-to-br from-accent-pink to-accent-orange p-[2px]">
+      <div className="overflow-hidden rounded-xl2 bg-brand-br p-[2px]">
         <dl className="flex flex-col gap-3 rounded-[0.65rem] bg-bg-card p-5">
           {rows.map(([k, v]) => (
             <div key={k}>

@@ -72,7 +72,7 @@ export function KeychainCard() {
         <button
           onClick={pair}
           disabled={busy}
-          className="mt-3 flex min-h-tap w-full items-center justify-center gap-2 rounded-xl2 bg-gradient-to-r from-accent-pink to-accent-orange text-lg font-bold text-white disabled:opacity-60"
+          className="mt-3 flex min-h-tap w-full items-center justify-center gap-2 rounded-xl2 bg-brand text-lg font-bold text-white disabled:opacity-60"
         >
           <BluetoothIcon width={20} height={20} />
           {busy ? 'Looking for devices...' : 'Pair a keychain'}

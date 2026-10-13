@@ -12,6 +12,9 @@ interface SmsRow {
   created_at: string
 }
 
+// Raw provider errors (e.g. Twilio codes) are for developers only.
+const devError = (raw: string) => (import.meta.env.DEV ? raw : 'Text failed. Try again.')
+
 const POLL_MS = 1500
 const POLL_FOR_MS = 20_000
 
@@ -44,13 +47,13 @@ export function SmsCard() {
     const { data: id, error } = await supabase.rpc('queue_test_sms')
     if (error) {
       setBusy(false)
-      setNote({ kind: 'error', text: errorText(error) })
+      setNote({ kind: 'error', text: devError(errorText(error)) })
       return
     }
     // Ask the server to send it now, then watch the real result.
     const { error: fnErr } = await supabase.functions.invoke('evaluate-session', { body: { outbox: true } })
     if (fnErr) {
-      setNote({ kind: 'error', text: `Queued, but the sender isn't reachable (deploy evaluate-session): ${errorText(fnErr)}` })
+      setNote({ kind: 'error', text: devError(`Queued, but the sender isn't reachable (deploy evaluate-session): ${errorText(fnErr)}`) })
     }
     const until = Date.now() + POLL_FOR_MS
     while (Date.now() < until) {
@@ -61,7 +64,7 @@ export function SmsCard() {
         break
       }
       if (row?.status === 'failed') {
-        setNote({ kind: 'error', text: row.error ?? 'Send failed.' })
+        setNote({ kind: 'error', text: devError(row.error ?? 'Send failed.') })
         break
       }
       await new Promise((r) => setTimeout(r, POLL_MS))
@@ -77,7 +80,7 @@ export function SmsCard() {
       <button
         onClick={sendTest}
         disabled={busy}
-        className="mt-3 min-h-tap w-full rounded-xl2 bg-gradient-to-r from-accent-pink to-accent-orange text-lg font-bold text-white disabled:opacity-60"
+        className="mt-3 min-h-tap w-full rounded-xl2 bg-brand text-lg font-bold text-white disabled:opacity-60"
       >
         {busy ? 'Sending...' : 'Send test text'}
       </button>
@@ -105,7 +108,7 @@ export function SmsCard() {
                 </span>
               </p>
               <p className="truncate text-ink-dim">{r.body}</p>
-              {r.status === 'failed' && r.error && <p className="text-status-alert">{r.error}</p>}
+              {r.status === 'failed' && <p className="text-status-alert">{devError(r.error ?? 'Send failed.')}</p>}
             </li>
           ))}
         </ul>

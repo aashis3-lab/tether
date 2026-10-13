@@ -118,7 +118,7 @@ export function PingScreen() {
 
 const TONE = {
   yellow: 'bg-[#f5c518] text-black',
-  red: 'bg-gradient-to-r from-[#ff7a3d] to-[#e01414] text-white',
+  red: 'bg-danger text-white',
 }
 
 function Choice({

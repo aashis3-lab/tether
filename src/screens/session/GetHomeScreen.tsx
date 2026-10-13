@@ -168,7 +168,7 @@ export function GetHomeScreen() {
             <a
               href={`tel:${SAFERIDE_PHONE.replace(/[^\d+]/g, '')}`}
               onClick={() => void markHeading('SafeRide')}
-              className="flex min-h-tap w-full items-center justify-center gap-3 rounded-xl2 bg-gradient-to-r from-accent-pink to-accent-orange text-lg font-bold text-white active:scale-[0.98]"
+              className="flex min-h-tap w-full items-center justify-center gap-3 rounded-xl2 bg-brand text-lg font-bold text-white active:scale-[0.98]"
             >
               <PhoneIcon width={22} height={22} /> Call SafeRide
             </a>

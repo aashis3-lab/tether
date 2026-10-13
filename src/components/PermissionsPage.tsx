@@ -166,7 +166,7 @@ export function PermissionsFlow({ onDone }: { onDone: () => void }) {
       ) : (
         <>
           <div className="flex flex-1 flex-col items-center justify-center text-center">
-            <div className="mb-6 flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-accent-pink to-accent-orange text-white">
+            <div className="mb-6 flex h-28 w-28 items-center justify-center rounded-full bg-brand-br text-white">
               {copy.icon}
             </div>
             <h1 className="text-[2rem] font-bold leading-tight tracking-tight">{copy.title}</h1>
@@ -186,8 +186,12 @@ export function PermissionsFlow({ onDone }: { onDone: () => void }) {
             )}
             {phase === 'insecure' && (
               <p className="mt-6 rounded-xl2 bg-bg-card p-4 text-status-checkin">
-                Location only works over a secure (https://) link. On a phone during development, use{' '}
-                <span className="font-mono">npm run dev:phone</span>.
+                Location only works over a secure (https://) link.
+                {import.meta.env.DEV && (
+                  <>
+                    {' '}On a phone during development, use <span className="font-mono">npm run dev:phone</span>.
+                  </>
+                )}
               </p>
             )}
           </div>

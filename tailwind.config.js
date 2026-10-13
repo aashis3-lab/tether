@@ -1,36 +1,48 @@
+const c = (name) => `rgb(var(--c-${name}) / <alpha-value>)`
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      // Colors are RGB channels in CSS variables (see src/index.css) so every
+      // utility, opacity modifier (/10, /50) and gradient stop resolves to a
+      // real color. `c('name')` -> rgb(var(--c-name) / <alpha-value>).
       colors: {
         bg: {
-          // Matched to /designs: neutral near-black ground, slightly lifted cards.
-          DEFAULT: '#0f0e11',
-          raised: '#17161a',
-          card: '#1c1b20',
+          DEFAULT: c('bg'),
+          raised: c('bg-raised'),
+          card: c('bg-card'),
         },
+        // Brand only: logo, progress bars, small accents. Never primary buttons.
         accent: {
-          pink: '#ff4f8b',
-          orange: '#ff8a3d',
+          pink: c('accent-pink'),
+          orange: c('accent-orange'),
         },
-        // Design's red for buttons/borders (softer than status-alert).
+        // Red means danger only: HELP, 911, active alerts.
         danger: {
-          DEFAULT: '#f04848',
-          line: '#b3141c',
+          DEFAULT: c('danger'),
+          line: c('danger-line'),
         },
-        // "Save & continue" disabled fill.
-        disabled: '#a3a3a8',
+        // Green means OK / safe; yellow means "come find me".
+        safe: c('safe'),
+        findme: c('findme'),
+        disabled: c('disabled'),
         status: {
-          calm: '#3dd68c',
-          checkin: '#ffb020',
-          alert: '#ff3b3b',
+          calm: c('safe'),
+          checkin: c('checkin'),
+          alert: c('alert'),
         },
         ink: {
-          DEFAULT: '#f5f3f7',
-          dim: '#a9a3b5',
-          faint: '#6b6578',
+          DEFAULT: c('ink'),
+          dim: c('ink-dim'),
+          faint: c('ink-faint'),
         },
+      },
+      backgroundImage: {
+        // Explicit stops, so it never depends on --tw-gradient-* variables.
+        brand: 'linear-gradient(to right, rgb(var(--c-accent-pink)), rgb(var(--c-accent-orange)))',
+        'brand-br': 'linear-gradient(to bottom right, rgb(var(--c-accent-pink)), rgb(var(--c-accent-orange)))',
       },
       maxWidth: {
         app: '430px',

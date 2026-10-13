@@ -35,7 +35,7 @@ type Variant = 'primary' | 'gradient' | 'secondary' | 'danger' | 'ghost'
 // ("Add another emergency contact"). Disabled primary turns solid gray.
 const variants: Record<Variant, string> = {
   primary: 'bg-accent-pink text-white disabled:bg-disabled',
-  gradient: 'bg-gradient-to-r from-accent-pink to-accent-orange text-white disabled:opacity-40',
+  gradient: 'bg-brand text-white disabled:opacity-40',
   secondary: 'bg-bg-card text-ink border border-white/50 disabled:opacity-40',
   danger: 'bg-danger text-white disabled:opacity-40',
   ghost: 'bg-transparent text-ink-dim disabled:opacity-40',

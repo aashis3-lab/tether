@@ -3,8 +3,39 @@
 @tailwind utilities;
 
 @layer base {
+  /* Color tokens as RGB channels; tailwind.config.js wraps them in rgb(). */
   :root {
     color-scheme: dark;
+    --c-bg: 15 14 17;
+    --c-bg-raised: 23 22 26;
+    --c-bg-card: 28 27 32;
+    --c-accent-pink: 255 79 139;
+    --c-accent-orange: 255 138 61;
+    --c-danger: 224 30 30;
+    --c-danger-line: 179 20 28;
+    --c-alert: 255 77 77;
+    --c-safe: 61 214 140;
+    --c-findme: 245 197 24;
+    --c-checkin: 255 176 32;
+    --c-disabled: 163 163 168;
+    --c-ink: 245 243 247;
+    --c-ink-dim: 169 163 181;
+    --c-ink-faint: 107 101 120;
+  }
+
+  /*
+   * Tailwind's preflight sets the gradient position variables to an empty
+   * value. Some browsers/minifiers treat that as invalid, which voids every
+   * from-/via-/to- gradient (they rendered transparent in production). Give
+   * them real defaults so gradients always resolve.
+   */
+  *,
+  ::before,
+  ::after,
+  ::backdrop {
+    --tw-gradient-from-position: 0%;
+    --tw-gradient-via-position: 50%;
+    --tw-gradient-to-position: 100%;
   }
 
   html,

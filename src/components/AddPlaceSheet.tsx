@@ -60,7 +60,7 @@ export function AddPlaceSheet({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={placesAvailable ? 'Search a bar, restaurant or address' : 'Search needs VITE_MAPTILER_KEY'}
+          placeholder={placesAvailable ? 'Search a bar, restaurant or address' : import.meta.env.DEV ? 'Search needs VITE_MAPTILER_KEY' : 'Search is unavailable right now'}
           className="min-h-tap w-full bg-transparent text-lg placeholder:text-ink-faint focus:outline-none"
         />
       </label>

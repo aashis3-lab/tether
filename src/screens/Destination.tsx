@@ -99,7 +99,7 @@ export function DestinationScreen() {
             ref={input}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={placesAvailable ? 'Search address or place' : 'Search needs VITE_MAPTILER_KEY'}
+            placeholder={placesAvailable ? 'Search address or place' : import.meta.env.DEV ? 'Search needs VITE_MAPTILER_KEY' : 'Search is unavailable right now'}
             disabled={!placesAvailable}
             autoFocus={picked.length > 0}
             className="h-full min-h-tap w-full bg-transparent text-lg placeholder:text-ink-faint focus:outline-none"

@@ -61,7 +61,7 @@ export function Home() {
       <div className="mt-6 grid grid-cols-[1.4fr_1fr] gap-3">
         <button
           onClick={() => navigate('/start/where')}
-          className="flex min-h-[72px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-accent-pink to-accent-orange px-3 text-lg font-bold text-white shadow-glow transition active:scale-[0.97]"
+          className="flex min-h-[72px] items-center justify-center gap-2 rounded-2xl bg-brand px-3 text-lg font-bold text-white shadow-glow transition active:scale-[0.97]"
         >
           <UsersIcon width={22} height={22} />
           Start a party

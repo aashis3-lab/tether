@@ -46,7 +46,7 @@ export function AvatarPicker({
       .upload(path, blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '3600' })
     if (err) {
       setBusy(false)
-      setError(err.message.includes('Bucket not found') ? 'Picture storage isn’t set up yet (run the avatars migration).' : err.message)
+      setError(!import.meta.env.DEV ? "Couldn't save your picture. Try again." : err.message.includes('Bucket not found') ? 'Picture storage isn’t set up yet (run the avatars migration).' : err.message)
       return
     }
     const { data } = supabase.storage.from('avatars').getPublicUrl(path)
