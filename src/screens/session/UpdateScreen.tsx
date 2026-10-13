@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
-import { CheckCircleIcon, PinIcon } from '@/components/icons'
+import { CheckCircleIcon } from '@/components/icons'
 import { Header, Button, ErrorText, Screen, Sheet, Title, inputClass } from '@/components/ui'
-import { ACTIVITIES, activityTimeLeft, liveActivity, type ActivityDef, type ActivityKey } from '@/lib/activities'
+import { buttonClass } from '@/components/buttons'
+import { ACTIVITIES, STATUS_CHOICES, activityTimeLeft, liveActivity, type ActivityDef, type ActivityKey } from '@/lib/activities'
 import { raiseAlert } from '@/lib/alerts'
 import { firstName } from '@/lib/format'
 import { errorText } from '@/lib/toast'
@@ -12,14 +13,16 @@ import { useSessionCtx } from './context'
 
 /**
  * "What's happening?", one status at a time; picking a tile replaces the
- * last one. Short-lived ones expire back to "Accounted for" on their own.
+ * last one. Only the night-out-ending statuses are offered; "Back with
+ * group" is pinned to the bottom. Older statuses (Bathroom, Dancing, …) still
+ * display for anyone who has one, and short-lived ones expire on their own.
  * Existing rules stay wired: Leaving with a friend quiets the left-alone
  * alert, Heading home starts ETA tracking, Phone dying hands off to a buddy.
  */
 export function UpdateScreen() {
   const navigate = useNavigate()
-  const { session, members, pins, me, avatars } = useSessionCtx()
-  const [picker, setPicker] = useState<null | 'moving' | 'leaving_friend' | 'leaving_new'>(null)
+  const { session, members, me, avatars } = useSessionCtx()
+  const [picker, setPicker] = useState<null | 'leaving_friend' | 'leaving_new'>(null)
   const [friends, setFriends] = useState<string[]>([])
   const [newName, setNewName] = useState('')
   const [busy, setBusy] = useState<ActivityKey | null>(null)
@@ -69,7 +72,7 @@ export function UpdateScreen() {
   }
 
   function tap(def: ActivityDef) {
-    if (def.key === 'moving' || def.key === 'leaving_friend' || def.key === 'leaving_new') setPicker(def.key)
+    if (def.key === 'leaving_friend' || def.key === 'leaving_new') setPicker(def.key)
     else void apply(def)
   }
 
@@ -90,26 +93,34 @@ export function UpdateScreen() {
         )}
       </p>
 
-      <div className="mt-5 grid grid-cols-3 gap-3">
-        {ACTIVITIES.map((a) => {
-          const active = current?.key === a.key || (a.key === 'back' && !current)
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        {STATUS_CHOICES.map((k, i) => {
+          const a = def(k)
+          const active = current?.key === a.key
+          // "Someone new" is amber so it never looks like leaving with a friend.
+          const tone =
+            a.key === 'leaving_new'
+              ? active
+                ? 'border-status-checkin bg-status-checkin/25'
+                : 'border-status-checkin/70 bg-status-checkin/10'
+              : active
+                ? 'border-white bg-white/15'
+                : 'border-white/10 bg-bg-card'
           return (
             <button
               key={a.key}
               disabled={busy !== null}
               onClick={() => tap(a)}
-              className={`flex items-center justify-center gap-2 rounded-2xl border p-2 text-center transition active:scale-95 ${
-                a.key === 'back'
-                  ? 'col-span-3 min-h-tap flex-row border-status-calm/50 bg-status-calm/10'
-                  : `aspect-square flex-col ${active ? 'border-accent-pink bg-accent-pink/15' : 'border-white/5 bg-bg-card'}`
+              aria-pressed={active}
+              className={`flex min-h-[124px] flex-col items-center justify-center gap-2 rounded-2xl border-2 p-3 text-center transition active:scale-95 disabled:opacity-40 ${tone} ${
+                i === STATUS_CHOICES.length - 1 && STATUS_CHOICES.length % 2 ? 'col-span-2 min-h-[96px]' : ''
               }`}
             >
-              <span className={a.key === 'back' ? 'text-2xl' : 'text-4xl'} aria-hidden="true">
+              <span className="text-5xl" aria-hidden="true">
                 {a.emoji}
               </span>
-              <span className="text-sm font-bold leading-tight">
-                {busy === a.key ? '…' : a.label}
-                {a.minutes && a.key !== 'back' && <span className="block text-[11px] font-normal text-ink-faint">{a.minutes} min</span>}
+              <span className={`text-lg font-bold leading-tight ${a.key === 'leaving_new' ? 'text-status-checkin' : ''}`}>
+                {busy === a.key ? '…' : a.tile ?? a.label}
               </span>
             </button>
           )
@@ -120,32 +131,31 @@ export function UpdateScreen() {
         <ErrorText>{error}</ErrorText>
       </div>
 
-      {sent && (
-        <div className="sticky bottom-3 mt-4 animate-enter rounded-2xl bg-status-calm p-4 text-black shadow-lg">
-          <p className="text-lg font-bold">Sent to your group</p>
-          <p className="font-medium">{sent}</p>
-          <button onClick={() => navigate(back)} className="mt-3 min-h-[48px] w-full rounded-xl bg-black font-bold text-white">
-            Back to map
+      {/* Room so the pinned bar never covers the last tile. */}
+      <div className={sent ? 'h-64' : 'h-28'} aria-hidden="true" />
+
+      {/* Pinned to the bottom: confirmation (after an update) and Back with group. */}
+      <div className="fixed inset-x-0 bottom-0 z-[900] flex justify-center">
+        <div className="w-full max-w-app bg-gradient-to-t from-bg via-bg to-bg/0 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-6">
+          {sent && (
+            <div className="mb-3 animate-enter rounded-2xl bg-white p-4 text-black shadow-lg" aria-live="polite">
+              <p className="text-lg font-bold">Sent to your group</p>
+              <p className="font-medium">{sent}</p>
+              <button onClick={() => navigate(back)} className="mt-3 min-h-[52px] w-full rounded-xl bg-black text-lg font-bold text-white">
+                Back to map
+              </button>
+            </div>
+          )}
+          <button
+            disabled={busy !== null}
+            onClick={() => tap(def('back'))}
+            aria-pressed={!current}
+            className={`${buttonClass('safe', true)} min-h-[68px]`}
+          >
+            <span aria-hidden="true">✅</span> {busy === 'back' ? '…' : 'Back with group'}
           </button>
         </div>
-      )}
-
-      {/* Moving venues: pick one of tonight's places. */}
-      <Sheet open={picker === 'moving'} onClose={() => setPicker(null)} title="Moving to…">
-        <ul className="divide-y divide-white/5 rounded-xl2 bg-bg-card">
-          {pins.map((p) => (
-            <li key={p.id}>
-              <button
-                onClick={() => void apply(def('moving'), { note: `Moving to ${p.name}` })}
-                className="flex min-h-tap w-full items-center gap-3 px-4 text-left font-semibold"
-              >
-                <PinIcon width={18} height={18} className="text-accent-orange" /> {p.name}
-              </button>
-            </li>
-          ))}
-          {pins.length === 0 && <li className="px-4 py-4 text-ink-dim">No places yet, add one with “+ Add place” on the map.</li>}
-        </ul>
-      </Sheet>
+      </div>
 
       {/* Leaving with a friend: pick from the group (quiets left-alone). */}
       <Sheet open={picker === 'leaving_friend'} onClose={() => setPicker(null)} title="Leaving with…">

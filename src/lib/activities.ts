@@ -25,6 +25,8 @@ export interface ActivityDef {
   label: string
   emoji: string
   minutes?: number
+  /** Shorter tile text on the Status screen, when it differs from `label`. */
+  tile?: string
 }
 
 export const ACTIVITIES: ActivityDef[] = [
@@ -35,13 +37,19 @@ export const ACTIVITIES: ActivityDef[] = [
   { key: 'dancing', label: 'Dancing', emoji: '💃' },
   { key: 'moving', label: 'Moving venues', emoji: '📍' },
   { key: 'leaving_friend', label: 'Leaving with friend', emoji: '👯' },
-  { key: 'leaving_new', label: 'Leaving with someone', emoji: '🧑‍🤝‍🧑' },
+  { key: 'leaving_new', label: 'Leaving with someone new', emoji: '👋', tile: 'Someone new' },
   { key: 'ride', label: 'Ordering a ride', emoji: '🚕' },
   { key: 'heading_home', label: 'Heading home', emoji: '🏠' },
   { key: 'phone_dying', label: 'Phone dying', emoji: '🪫' },
   { key: 'minute', label: 'Need a minute', emoji: '🫧', minutes: 15 },
   { key: 'back', label: 'Back with group', emoji: '✅' },
 ]
+
+/**
+ * What the Status screen offers, in order ("back" is pinned separately).
+ * The other keys stay valid so older statuses still display.
+ */
+export const STATUS_CHOICES: ActivityKey[] = ['heading_home', 'leaving_new', 'leaving_friend', 'ride', 'phone_dying']
 
 export const activityDef = (key: string | null | undefined) => ACTIVITIES.find((a) => a.key === key)
 
