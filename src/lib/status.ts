@@ -120,3 +120,23 @@ export function groupState(members: Member[], alerts: Alert[], meId: string | un
   if (members.length === 1) return { tone: 'calm', line: 'Just you so far', sub: 'Invite friends to join' }
   return { tone: 'calm', line: together === out.length ? `All ${together} together` : `${together} together`, sub }
 }
+
+/**
+ * "4 friends · all within 50 ft · updated now": the peek line under the
+ * group state.
+ */
+export function groupMeta(members: Member[], me: Member | undefined, myPos: LatLng | null): string {
+  const others = members.filter((m) => m.id !== me?.id && m.status !== 'home')
+  const parts: string[] = [`${members.length} ${members.length === 1 ? 'person' : 'people'}`]
+  const located = others.filter(hasLocation)
+  if (myPos && located.length) {
+    const far = Math.max(...located.map((m) => distanceM(myPos, m)))
+    parts.push(located.length === others.length ? `all within ${formatDistance(far)}` : `${located.length} on map`)
+  }
+  const latest = members
+    .filter(hasLocation)
+    .map((m) => new Date(m.last_updated).getTime())
+    .sort((a, b) => b - a)[0]
+  if (latest) parts.push(`updated ${timeAgo(new Date(latest).toISOString()).replace('just now', 'now')}`)
+  return parts.join(' · ')
+}

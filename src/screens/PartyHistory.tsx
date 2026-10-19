@@ -35,31 +35,31 @@ export function PartyHistory() {
   return (
     <Screen>
       <Header title="Your parties" back="/" />
-      <label className="mt-4 flex min-h-[52px] items-center gap-3 rounded-2xl border border-white/10 bg-bg-card px-4">
+      <label className="mt-2 flex min-h-[56px] items-center gap-3 rounded-full bg-surface-high px-5 focus-within:ring-2 focus-within:ring-primary">
         <SearchIcon width={18} height={18} className="text-ink-dim" />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search parties, places, friends"
-          className="w-full bg-transparent placeholder:text-ink-faint focus:outline-none"
+          className="w-full bg-transparent text-lg placeholder:text-ink-faint focus:outline-none"
         />
       </label>
       {active && (
         <button
           onClick={() => navigate(`/session/${active.id}`)}
-          className="mt-4 flex w-full items-center gap-3 rounded-2xl border-2 border-safe/60 bg-safe/10 px-4 py-3 text-left active:scale-[0.98]"
+          className="mt-4 flex w-full items-center gap-3 rounded-2xl bg-status-calm/10 px-4 py-3 text-left active:scale-[0.98]"
         >
           <span className="h-3 w-3 shrink-0 animate-pulse rounded-full bg-safe" aria-hidden="true" />
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold uppercase tracking-wide text-safe">Happening now</span>
-            <span className="block truncate text-lg font-bold">{active.name}</span>
+            <span className="block text-xs font-medium uppercase tracking-wider text-safe">Happening now</span>
+            <span className="block truncate text-lg font-medium">{active.name}</span>
             <span className="block text-base text-ink-dim">Ends {formatClock(active.endTime)} · tap to open the map</span>
           </span>
           <ChevronRightIcon width={22} height={22} className="shrink-0 text-ink-dim" />
         </button>
       )}
       <div className="mt-4 flex flex-col gap-2 pb-4">
-        {all === null && <div className="h-16 animate-pulse rounded-2xl bg-bg-card" />}
+        {all === null && <div className="h-16 animate-pulse rounded-2xl bg-surface-high/70" />}
         {list.map((p) => (
           <PartyCard key={p.id} party={p} onClick={() => navigate(`/history/${p.id}`)} />
         ))}

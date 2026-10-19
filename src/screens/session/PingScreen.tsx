@@ -59,18 +59,18 @@ export function PingScreen() {
     <Screen>
       <Header title="Get help from friends" back={`/session/${session.id}`} />
       <Title>What do you need?</Title>
-      <p className="mt-1 text-lg text-ink-dim">Tap one option.</p>
+      <p className="mt-1 text-base text-ink-dim">Tap one option.</p>
 
       {myAlert && (
-        <div className="mt-4 rounded-xl2 border border-status-alert/50 bg-status-alert/10 p-4">
-          <p className="text-lg font-bold">
+        <div className="mt-4 rounded-xl border border-status-alert/50 bg-status-alert/10 p-4">
+          <p className="text-lg font-medium">
             {claimer ? `${firstName(claimer)} is on it` : 'Request sent, waiting for a friend to answer'}
           </p>
           <p className="mt-1 text-ink-dim">
             {myAlert.level === 'ping' ? 'Your group has your location.' : `${guardian} has been texted.`}
           </p>
           {token && (
-            <a href={`/guardian/${token}`} target="_blank" rel="noreferrer" className="mt-1 inline-block min-h-[44px] leading-[44px] text-accent-pink underline">
+            <a href={`/guardian/${token}`} target="_blank" rel="noreferrer" className="mt-1 inline-block min-h-[44px] leading-[44px] text-primary-ink underline">
               Open guardian view (demo) ↗
             </a>
           )}
@@ -112,14 +112,14 @@ export function PingScreen() {
       <div className="mt-3">
         <ErrorText>{error}</ErrorText>
       </div>
-      <p className="mt-auto pt-6 text-center text-base text-ink-dim">In danger? Use the red HELP button to call.</p>
+      <p className="mt-auto pt-6 text-center text-xs text-ink-dim">In danger? Use the red HELP button to call.</p>
     </Screen>
   )
 }
 
 const TONE = {
   yellow: 'bg-findme text-black',
-  red: 'border-[3px] border-danger bg-danger/15 text-ink [&_svg]:text-status-alert',
+  red: 'border border-danger/50 bg-danger/10 text-ink [&_svg]:text-status-alert',
 }
 
 function Choice({
@@ -143,12 +143,12 @@ function Choice({
     <button
       disabled={disabled}
       onClick={onClick}
-      className={`flex min-h-[96px] w-full items-center gap-4 rounded-2xl px-5 text-left active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100 ${TONE[tone]}`}
+      className={`flex min-h-[80px] w-full items-center gap-4 rounded-[20px] px-4 text-left active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100 ${TONE[tone]}`}
     >
       <span className="shrink-0">{icon}</span>
       <span className="min-w-0 flex-1">
-        <span className="block text-2xl font-bold">{title}</span>
-        <span className="mt-0.5 block text-base opacity-90">{sub}</span>
+        <span className="block text-xl font-medium">{title}</span>
+        <span className="mt-0.5 block text-xs opacity-80">{sub}</span>
       </span>
       {done && <CheckIcon width={24} height={24} className="shrink-0" />}
     </button>

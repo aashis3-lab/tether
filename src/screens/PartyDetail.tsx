@@ -34,8 +34,8 @@ export function PartyDetail() {
               : `${party.homeCount} of ${party.members.length} checked in home`}
           </p>
 
-          <h2 className="mb-2 mt-6 text-sm font-bold uppercase tracking-wide text-ink-faint">Who came</h2>
-          <ul className="divide-y divide-white/5 rounded-2xl bg-bg-card px-4">
+          <h2 className="mb-2 mt-6 text-sm font-medium text-primary-ink">Who came</h2>
+          <ul className="divide-y divide-line/70 rounded-2xl bg-surface-high/70 px-4">
             {party.members.map((m) => (
               <li key={m.id} className="flex min-h-[60px] items-center gap-3 py-2">
                 <Avatar name={m.name} url={m.avatar} size={40} />
@@ -52,11 +52,11 @@ export function PartyDetail() {
 
           {party.venues.length > 0 && (
             <>
-              <h2 className="mb-2 mt-6 text-sm font-bold uppercase tracking-wide text-ink-faint">Where</h2>
-              <ul className="divide-y divide-white/5 rounded-2xl bg-bg-card px-4">
+              <h2 className="mb-2 mt-6 text-sm font-medium text-primary-ink">Where</h2>
+              <ul className="divide-y divide-line/70 rounded-2xl bg-surface-high/70 px-4">
                 {party.venues.map((v, i) => (
                   <li key={i} className="flex min-h-[52px] items-center gap-3">
-                    <PinIcon width={18} height={18} className="text-accent-orange" />
+                    <PinIcon width={18} height={18} className="text-secondary-ink" />
                     <span className="font-semibold">{v}</span>
                   </li>
                 ))}
@@ -64,9 +64,9 @@ export function PartyDetail() {
             </>
           )}
 
-          <h2 className="mb-2 mt-6 text-sm font-bold uppercase tracking-wide text-ink-faint">Your guardian</h2>
-          <div className="flex min-h-[52px] items-center gap-3 rounded-2xl bg-bg-card px-4">
-            <ShieldIcon width={18} height={18} className="text-accent-pink" />
+          <h2 className="mb-2 mt-6 text-sm font-medium text-primary-ink">Your guardian</h2>
+          <div className="flex min-h-[52px] items-center gap-3 rounded-2xl bg-surface-high/70 px-4">
+            <ShieldIcon width={18} height={18} className="text-primary-ink" />
             <span className="font-semibold">{party.myGuardian ?? 'Not set'}</span>
           </div>
 

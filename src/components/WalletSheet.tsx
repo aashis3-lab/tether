@@ -30,19 +30,19 @@ export function WalletSheet({
   ]
   return (
     <Sheet open={open} onClose={onClose} title="Safety card">
-      <dl className="flex flex-col divide-y divide-black/10 rounded-2xl bg-white px-5 py-2 text-black">
+      <dl className="flex flex-col divide-y divide-black/10 rounded-2xl bg-white px-5 py-2 text-black shadow-e2">
         {rows.map((r, i) => (
           <div key={i} className="flex items-center gap-3 py-3">
             <div className="min-w-0 flex-1">
-              <dt className="text-sm font-bold uppercase tracking-wide text-black/60">{r.label}</dt>
-              <dd className="break-words text-2xl font-bold leading-tight">{r.value}</dd>
-              {r.phone && <dd className="text-lg font-semibold text-black/80">{formatPhone(r.phone)}</dd>}
+              <dt className="text-xs font-medium uppercase tracking-wider text-black/60">{r.label}</dt>
+              <dd className="break-words text-2xl font-semibold leading-tight">{r.value}</dd>
+              {r.phone && <dd className="text-lg font-medium text-black/80">{formatPhone(r.phone)}</dd>}
             </div>
             {r.phone && (
               <a
                 href={`tel:${r.phone.replace(/[^\d+]/g, '')}`}
                 aria-label={`Call ${r.value}`}
-                className="flex min-h-[56px] shrink-0 items-center gap-2 rounded-full bg-black px-5 text-lg font-bold text-white active:scale-95"
+                className="flex min-h-[56px] shrink-0 items-center gap-2 rounded-full bg-black px-5 text-lg font-medium text-white active:scale-95"
               >
                 <PhoneIcon width={20} height={20} strokeWidth={2.2} /> Call
               </a>

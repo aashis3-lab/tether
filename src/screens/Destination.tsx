@@ -110,13 +110,13 @@ export function DestinationScreen() {
 
   return (
     <Screen>
-      <Header title="Start a party" back="/" />
+      <Header title="Start a night" back="/" />
       <StartProgress step={1} />
       <Title>Where are you going?</Title>
-      <p className="mt-1 text-lg text-ink-dim">Set your destination for the night.</p>
+      <p className="mt-1 text-base text-ink-dim">Add one or more venues. Each becomes a pin your group can see.</p>
 
       {(adding || picked.length === 0) && (
-        <label className="mt-5 flex min-h-tap items-center gap-3 rounded-xl2 border border-white/15 bg-bg-card px-4">
+        <label className="mt-5 flex min-h-[56px] items-center gap-3 rounded-full bg-surface-high px-5 shadow-e1 focus-within:ring-2 focus-within:ring-primary">
           <SearchIcon width={20} height={20} className="shrink-0 text-ink-dim" />
           <input
             ref={input}
@@ -131,25 +131,25 @@ export function DestinationScreen() {
       )}
 
       {query.trim() ? (
-        <ul className="mt-3 flex flex-col divide-y divide-white/5 rounded-xl2 bg-bg-card">
+        <ul className="mt-3 flex flex-col divide-y divide-line/70 overflow-hidden rounded-2xl bg-surface-lowest dark:bg-surface-mid">
           {results.map((d) => (
             <PlaceRow key={d.name + d.address} d={d} icon={<PinIcon width={20} height={20} />} onClick={() => pick(d)} />
           ))}
-          {!searching && results.length === 0 && <li className="px-4 py-4 text-ink-dim">No matches yet, try adding the city.</li>}
-          {searching && results.length === 0 && <li className="px-4 py-4 text-ink-dim">Searching…</li>}
+          {!searching && results.length === 0 && <li className="px-4 py-4 text-base text-ink-dim">No matches yet, try adding the city.</li>}
+          {searching && results.length === 0 && <li className="px-4 py-4 text-base text-ink-dim">Searching…</li>}
         </ul>
       ) : (
         <>
           {picked.length > 0 && (
             <div className="mt-5 flex flex-col gap-2">
               {picked.map((d) => (
-                <div key={d.name + d.address} className="flex min-h-tap items-center gap-3 rounded-xl2 border border-white/10 bg-bg-card px-4 py-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-pink/20 text-accent-pink">
+                <div key={d.name + d.address} className="flex min-h-tap animate-enter items-center gap-3 rounded-2xl bg-primary-container/60 px-4 py-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-on">
                     <PinIcon width={18} height={18} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-lg font-semibold">{d.name}</p>
-                    <p className="truncate text-base text-ink-dim">{d.address}</p>
+                    <p className="truncate text-lg font-medium text-primary-on-container">{d.name}</p>
+                    <p className="truncate text-xs text-primary-on-container/75">{d.address}</p>
                   </div>
                   {picked.length > 1 ? (
                     <button
@@ -160,7 +160,7 @@ export function DestinationScreen() {
                       <XIcon width={18} height={18} />
                     </button>
                   ) : (
-                    <CheckCircleIcon width={22} height={22} className="shrink-0 text-accent-pink" />
+                    <CheckCircleIcon width={22} height={22} className="shrink-0 text-primary-ink" />
                   )}
                 </div>
               ))}
@@ -173,16 +173,16 @@ export function DestinationScreen() {
                 setAdding(true)
                 window.setTimeout(() => input.current?.focus(), 0)
               }}
-              className={`mt-4 ${buttonClass('secondary')}`}
+              className={`mt-3 ${buttonClass('secondary')}`}
             >
-              Add Destination
+              Add another place
             </button>
           )}
 
           {(
             <>
-              <p className="mb-2 mt-6 text-sm font-semibold uppercase tracking-wide text-ink-faint">Suggestions</p>
-              <ul className="flex flex-col divide-y divide-white/5 rounded-xl2 bg-bg-card">
+              <p className="section-title mt-2">Suggestions</p>
+              <ul className="flex flex-col divide-y divide-line/70 overflow-hidden rounded-2xl bg-surface-lowest dark:bg-surface-mid">
                 {current && !picked.some((p) => same(p, current)) ? (
                   <PlaceRow d={current} icon={<CrosshairIcon />} onClick={() => pick(current)} />
                 ) : !current ? (
@@ -192,18 +192,18 @@ export function DestinationScreen() {
                       disabled={locState === 'locating' || locState === 'checking'}
                       className="flex min-h-tap w-full items-center gap-3 px-4 py-3 text-left"
                     >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-pink/15 text-accent-pink">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-me/15 text-me">
                         <CrosshairIcon />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block font-semibold">
+                        <span className="block text-lg font-medium">
                           {locState === 'locating' || locState === 'checking'
                             ? 'Finding you…'
                             : locState === 'ask'
                               ? 'Use my current location'
                               : 'Turn on location for nearby places'}
                         </span>
-                        <span className="block text-base text-ink-dim">
+                        <span className="block text-xs text-ink-dim">
                           {locState === 'denied'
                             ? 'Location is blocked. Turn it on in your phone settings, then tap here.'
                             : locState === 'off'
@@ -260,12 +260,12 @@ function PlaceRow({ d, icon, meta, onClick }: { d: Destination; icon: ReactNode;
   return (
     <li>
       <button onClick={onClick} className="flex min-h-tap w-full items-center gap-3 px-4 py-3 text-left">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/5 text-ink-dim">{icon}</span>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-high text-ink-dim">{icon}</span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-semibold">{d.name}</span>
-          <span className="block truncate text-base text-ink-dim">{d.address}</span>
+          <span className="block truncate text-lg">{d.name}</span>
+          <span className="block truncate text-xs text-ink-dim">{d.address}</span>
         </span>
-        {meta && <span className="shrink-0 text-base text-ink-dim">{meta}</span>}
+        {meta && <span className="shrink-0 text-xs text-ink-dim">{meta}</span>}
       </button>
     </li>
   )

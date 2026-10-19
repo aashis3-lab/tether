@@ -26,7 +26,7 @@ export function CodeBoxes({
         {digits.map((d, i) => (
           <div
             key={i}
-            className={`flex aspect-[5/6] w-full max-w-[3.5rem] items-center justify-center rounded-xl2 border-[1.5px] bg-bg-card text-3xl font-medium ${
+            className={`flex aspect-[5/6] w-full max-w-[3.5rem] items-center justify-center rounded-xl border-[1.5px] bg-transparent text-2xl font-medium ${
               i === active && document.activeElement === input.current ? 'border-accent-pink ring-2 ring-accent-pink/30' : 'border-accent-pink'
             }`}
           >

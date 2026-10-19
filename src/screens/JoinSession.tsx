@@ -85,30 +85,30 @@ export function JoinSession() {
       <Title>Join a party</Title>
 
       <label className="mt-5 block">
-        <span className="mb-2 block text-sm font-semibold">Invite code</span>
+        <span className="mb-1.5 block text-xs font-medium text-ink-dim">Invite code</span>
         <input
           value={formatCode(code)}
           onChange={(e) => setCode(normalize(e.target.value))}
           autoCapitalize="characters"
           autoComplete="off"
           placeholder="K7M 4QX"
-          className={`${inputClass} text-xl font-semibold tracking-wide`}
+          className={`${inputClass} text-xl font-medium tracking-wide`}
           autoFocus={!codeParam}
         />
       </label>
 
       <button
         onClick={() => setScanning(true)}
-        className="mt-3 flex min-h-tap w-full items-center gap-3 rounded-xl2 border border-white/10 bg-bg-card px-4 text-lg font-semibold active:scale-[0.98]"
+        className="mt-3 flex min-h-tap w-full items-center justify-center gap-2 rounded-full border border-outline px-4 text-base font-medium text-primary-ink active:scale-[0.98]"
       >
-        <QrIcon width={22} height={22} className="text-accent-orange" />
+        <QrIcon width={22} height={22} className="text-secondary-ink" />
         Scan QR
       </button>
 
-      {preview && <h2 className="mt-6 text-2xl font-bold">Is this your group?</h2>}
+      {preview && <h2 className="section-title mt-4 px-0">Is this your group?</h2>}
       {preview && (
-        <div className="mt-3 rounded-xl2 bg-bg-card p-5">
-          <p className="text-2xl font-bold">{preview.party_name || `${host}'s party`}</p>
+        <div className="rounded-[20px] bg-brand-tonal p-5 shadow-e1">
+          <p className="text-2xl font-medium text-primary-on-container">{preview.party_name || `${host}'s party`}</p>
           {preview.party_name && <p className="text-base text-ink-dim">Started by {host}</p>}
           {preview.member_names && preview.member_names.length > 0 && (
             <>
@@ -131,10 +131,10 @@ export function JoinSession() {
       {preview && (
         <button
           onClick={() => setSheet('guardian')}
-          className="mt-3 flex min-h-tap w-full items-center gap-3 rounded-xl2 bg-bg-card px-4 py-3 text-left"
+          className="mt-3 flex min-h-[64px] w-full items-center gap-3 rounded-2xl bg-surface-lowest px-4 py-3 text-left dark:bg-surface-mid"
         >
           <span className="min-w-0 flex-1">
-            <span className="block font-semibold">{guardian ? `${guardian.name} • Guardian` : 'Choose a guardian'}</span>
+            <span className="block text-lg">{guardian ? `${guardian.name} • Guardian` : 'Choose a guardian'}</span>
             <span className="block text-base text-ink-dim">Your at-home contact</span>
           </span>
           <ChevronRightIcon width={20} height={20} className="text-ink-dim" />
@@ -153,7 +153,7 @@ export function JoinSession() {
         >
           {preview ? `Join ${host}'s party` : 'Join party'}
         </button>
-        <p className="mt-3 text-center text-base text-ink-dim">Location shares after you join.</p>
+        <p className="mt-3 text-center text-xs text-ink-dim">Location shares after you join.</p>
       </div>
 
       <GuardianSheet

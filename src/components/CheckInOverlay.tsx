@@ -83,13 +83,13 @@ export function CheckInOverlay({ checkIn, me }: { checkIn: CheckIn; me: Member }
   }
 
   return (
-    <div className="fixed inset-0 z-[1900] flex justify-center bg-bg">
-      <div className="flex w-full max-w-app flex-col overflow-y-auto px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
-        <p className="mb-5 min-h-tap text-center text-xl font-bold leading-[60px] tracking-tight text-accent-pink">tether</p>
+    <div className="fixed inset-0 z-[1900] flex animate-fade-in justify-center bg-surface">
+      <div className="flex w-full max-w-app flex-col overflow-y-auto px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
+        <p className="mb-5 flex min-h-[56px] items-center justify-center gap-1.5 text-lg font-medium text-ink-dim"><img src="/icons/logo-mark.png" alt="" className="h-6 w-auto" />tether</p>
 
         <Eyebrow tone="orange">{prompt.eyebrow}</Eyebrow>
-        <h1 className="mt-1 text-[2rem] font-bold leading-tight tracking-tight">{prompt.title}</h1>
-        <p className="mt-2 text-lg text-ink-dim">{prompt.body}</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight">{prompt.title}</h1>
+        <p className="mt-2 text-base text-ink-dim">{prompt.body}</p>
 
         <div className="mt-5 flex flex-col gap-3">
           <InfoCard
@@ -110,12 +110,12 @@ export function CheckInOverlay({ checkIn, me }: { checkIn: CheckIn; me: Member }
               key={o.response}
               disabled={busy}
               onClick={() => answer(o.response)}
-              className={`flex w-full items-center gap-3 rounded-xl2 px-5 text-left font-bold active:scale-[0.98] disabled:opacity-40 ${
+              className={`flex w-full items-center justify-center gap-3 rounded-full px-5 font-medium active:scale-[0.98] disabled:opacity-40 ${
                 o.style === 'primary'
-                  ? 'min-h-tap justify-center bg-white text-xl text-black'
+                  ? 'min-h-[52px] bg-primary text-lg text-primary-on'
                   : o.style === 'outline'
-                    ? 'min-h-tap border-2 border-white/40 text-xl'
-                    : 'min-h-[84px] justify-center bg-danger text-2xl text-white'
+                    ? 'min-h-[52px] border border-outline text-lg text-primary-ink'
+                    : 'min-h-[64px] rounded-2xl bg-danger text-xl text-white'
               }`}
             >
               {o.icon}

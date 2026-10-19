@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Contact } from '@/lib/types'
-import { CheckIcon } from './icons'
+import { Avatar } from './Avatar'
+import { PlusIcon } from './icons'
 import { Field } from './ui'
 
 /**
@@ -25,31 +26,35 @@ export function GuardianPicker({
     <div>
       {heading && (
         <>
-          <h2 className="text-lg font-semibold">Your guardian tonight</h2>
-          <p className="mb-3 text-ink-dim">A sober person who gets a text only if you need help.</p>
+          <h2 className="text-xl font-medium">Your guardian tonight</h2>
+          <p className="mb-3 text-base text-ink-dim">A sober person who gets a text only if you need help.</p>
         </>
       )}
 
-      <div className="flex flex-col gap-2">
+      <div className="divide-y divide-line/70 overflow-hidden rounded-2xl bg-surface-lowest dark:bg-surface-mid" role="radiogroup">
         {contacts.map((c, i) => {
           const selected = !custom && matches(c)
           return (
             <button
               key={i}
               type="button"
+              role="radio"
+              aria-checked={selected}
               onClick={() => {
                 setCustom(false)
                 onChange(c)
               }}
-              className={`flex min-h-tap items-center gap-3 rounded-xl2 border bg-bg-card px-4 py-2 text-left ${
-                selected ? 'border-accent-pink' : 'border-white/10'
-              }`}
+              className={`flex min-h-[64px] w-full items-center gap-4 px-4 py-2 text-left transition-colors ${selected ? 'bg-primary-container/50' : ''}`}
             >
+              <Avatar name={c.name} size={40} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-lg font-semibold">{c.name}</p>
-                <p className="truncate text-base text-ink-dim">{c.phone}</p>
+                <p className="truncate text-lg">{c.name}</p>
+                <p className="truncate text-xs text-ink-dim">
+                  {c.phone}
+                  {i === 0 ? ' · emergency contact' : ''}
+                </p>
               </div>
-              {selected && <CheckIcon className="text-accent-pink" />}
+              <Radio on={selected} />
             </button>
           )
         })}
@@ -57,15 +62,19 @@ export function GuardianPicker({
         {contacts.length > 0 && (
           <button
             type="button"
+            role="radio"
+            aria-checked={custom}
             onClick={() => {
               setCustom(true)
               onChange({ name: '', phone: '' })
             }}
-            className={`flex min-h-tap items-center rounded-xl2 border bg-bg-card px-4 text-left text-lg font-semibold ${
-              custom ? 'border-accent-pink' : 'border-white/10'
-            }`}
+            className={`flex min-h-[56px] w-full items-center gap-4 px-4 text-left transition-colors ${custom ? 'bg-primary-container/50' : ''}`}
           >
-            Someone else
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-high text-ink-dim">
+              <PlusIcon width={20} height={20} />
+            </span>
+            <span className="flex-1 text-lg">Someone else</span>
+            <Radio on={custom} />
           </button>
         )}
       </div>
@@ -82,5 +91,14 @@ export function GuardianPicker({
         </div>
       )}
     </div>
+  )
+}
+
+/** Material radio indicator. */
+function Radio({ on }: { on: boolean }) {
+  return (
+    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${on ? 'border-primary' : 'border-outline'}`}>
+      {on && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
+    </span>
   )
 }

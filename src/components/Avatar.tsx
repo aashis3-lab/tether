@@ -26,7 +26,7 @@ export function Avatar({
 
   return (
     <span
-      className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-br font-bold text-white ${ring ?? ''} ${className}`}
+      className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-br font-semibold text-white ${ring ?? ''} ${className}`}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.38) }}
     >
       {url && !broken ? (

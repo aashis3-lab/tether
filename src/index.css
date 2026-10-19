@@ -3,24 +3,83 @@
 @tailwind utilities;
 
 @layer base {
-  /* Color tokens as RGB channels; tailwind.config.js wraps them in rgb(). */
+  /*
+   * Material 3 tonal palette from the brand pink (#FF4F8B) and orange
+   * (#FF8A3D), as RGB channels; tailwind.config.js wraps them in rgb().
+   * Light is the default; src/lib/theme.ts sets data-theme="dark".
+   */
   :root {
+    color-scheme: light;
+    --c-surface: 255 248 249;
+    --c-surface-lowest: 255 255 255;
+    --c-surface-low: 254 241 243;
+    --c-surface-mid: 249 235 238;
+    --c-surface-high: 243 229 232;
+    --c-surface-highest: 237 223 226;
+    --c-inverse: 54 47 48;
+    --c-on-inverse: 250 238 239;
+    --c-on-surface: 32 26 27;
+    --c-on-surface-variant: 82 67 70;
+    --c-outline: 132 115 118;
+    --c-outline-variant: 214 194 197;
+
+    --c-primary: 255 79 139;
+    --c-on-primary: 255 255 255;
+    --c-primary-ink: 184 0 84;
+    --c-primary-container: 255 217 226;
+    --c-on-primary-container: 62 0 29;
+    --c-secondary: 255 138 61;
+    --c-secondary-ink: 154 69 0;
+    --c-secondary-container: 255 220 198;
+    --c-on-secondary-container: 49 19 0;
+
+    --c-danger: 210 38 38;
+    --c-safe: 52 199 120;
+    --c-findme: 245 197 24;
+    --c-ok-ink: 24 128 56;
+    --c-warn-ink: 168 92 0;
+    --c-alert-ink: 186 26 26;
+    --c-me: 26 115 232;
+
+    --app-bg: #fff8f9;
+    --app-fg: #201a1b;
+  }
+
+  :root[data-theme='dark'] {
     color-scheme: dark;
-    --c-bg: 15 14 17;
-    --c-bg-raised: 23 22 26;
-    --c-bg-card: 28 27 32;
-    --c-accent-pink: 255 79 139;
-    --c-accent-orange: 255 138 61;
-    --c-danger: 224 30 30;
-    --c-danger-line: 179 20 28;
-    --c-alert: 255 77 77;
+    --c-surface: 25 17 19;
+    --c-surface-lowest: 19 12 14;
+    --c-surface-low: 34 25 27;
+    --c-surface-mid: 38 29 31;
+    --c-surface-high: 49 40 42;
+    --c-surface-highest: 60 50 52;
+    --c-inverse: 239 223 225;
+    --c-on-inverse: 54 47 48;
+    --c-on-surface: 239 223 225;
+    --c-on-surface-variant: 214 194 197;
+    --c-outline: 159 140 143;
+    --c-outline-variant: 82 67 70;
+
+    --c-primary: 255 79 139;
+    --c-on-primary: 255 255 255;
+    --c-primary-ink: 255 177 200;
+    --c-primary-container: 143 0 66;
+    --c-on-primary-container: 255 217 226;
+    --c-secondary: 255 138 61;
+    --c-secondary-ink: 255 183 134;
+    --c-secondary-container: 117 52 0;
+    --c-on-secondary-container: 255 220 198;
+
+    --c-danger: 226 52 52;
     --c-safe: 61 214 140;
     --c-findme: 245 197 24;
-    --c-checkin: 255 176 32;
-    --c-disabled: 163 163 168;
-    --c-ink: 245 243 247;
-    --c-ink-dim: 200 195 211;
-    --c-ink-faint: 146 140 160;
+    --c-ok-ink: 109 214 140;
+    --c-warn-ink: 255 184 77;
+    --c-alert-ink: 255 138 128;
+    --c-me: 138 180 248;
+
+    --app-bg: #191113;
+    --app-fg: #efdfe1;
   }
 
   /*
@@ -40,15 +99,18 @@
 
   html,
   body {
-    background-color: #0f0e11;
+    background-color: var(--app-bg);
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior-y: none;
   }
 
   body {
     margin: 0;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    color: #f5f3f7;
+    font-family: 'Google Sans', 'Google Sans Flex', 'Roboto', 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--app-fg);
+    -webkit-font-smoothing: antialiased;
   }
 
   #root {
@@ -59,14 +121,99 @@
   button {
     touch-action: manipulation;
   }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--c-primary));
+    outline-offset: 2px;
+  }
 }
 
 @layer components {
   .app-shell {
-    @apply mx-auto flex min-h-screen min-h-dvh w-full max-w-app flex-col bg-bg text-ink;
+    @apply mx-auto flex min-h-screen min-h-dvh w-full max-w-app flex-col bg-surface text-ink;
   }
 
   .tap-target {
     @apply min-h-tap min-w-tap;
+  }
+
+  /* 12px medium-gray label (Material "label-medium"). */
+  .label {
+    @apply text-xs font-medium text-ink-dim;
+  }
+
+  /* Section heading above a grouped list. */
+  .section-title {
+    @apply px-4 pb-2 pt-4 text-sm font-medium text-primary-ink;
+  }
+}
+
+@layer utilities {
+  /* Map overlays: translucent tonal surface. */
+  .glass {
+    background-color: rgb(var(--c-surface-lowest) / 0.94);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
+
+/* Touch ripple drawn by src/lib/ripple.ts. */
+.m3-ripple-host {
+  position: fixed;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5000;
+}
+.m3-ripple {
+  position: absolute;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.16;
+  transform: scale(0);
+  animation: m3-ripple 450ms cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+@keyframes m3-ripple {
+  70% {
+    opacity: 0.12;
+  }
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+/* Shared-element transition (list row avatar -> detail sheet). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+}
+::view-transition-group(*) {
+  animation-duration: 320ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Leaflet: themed attribution and no default focus box. */
+.leaflet-container {
+  font-family: inherit;
+}
+.leaflet-container:focus {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m3-ripple {
+    display: none;
+  }
+}
+
+/* Pulsing ring around a map pin that needs attention (MapView). */
+@keyframes tether-pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
   }
 }

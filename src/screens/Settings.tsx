@@ -5,23 +5,24 @@ import { AUTH_MODE, formatPhone } from '@/auth/phoneAuth'
 import { AvatarPicker } from '@/components/AvatarPicker'
 import { BackTapSteps } from '@/components/BackTapSteps'
 import { GuardianSheet } from '@/components/GuardianSheet'
-import { ChevronRightIcon, PlusIcon, XIcon } from '@/components/icons'
+import { BellIcon, ChevronRightIcon, HandIcon, HomeIcon, MoonIcon, PhoneIcon, PlusIcon, ShieldIcon, SunIcon, UserIcon, XIcon } from '@/components/icons'
 import { KeychainCard } from '@/components/KeychainCard'
 import { PermissionsCard } from '@/components/PermissionsCard'
 import { SmsCard } from '@/components/SmsCard'
-import { Header, Button, ErrorText, Field, Screen, Sheet, Title } from '@/components/ui'
+import { Header, Button, ErrorText, Field, ListSection, Screen, Segmented, Sheet } from '@/components/ui'
 import { useActiveSessionId } from '@/hooks/useSession'
 import { geocode, getCurrentPosition } from '@/lib/geo'
 import { profileContacts } from '@/lib/profile'
 import { supabase } from '@/lib/supabase'
 import { attempt } from '@/lib/toast'
 import { getRideApp, setRideApp, type RideApp } from '@/lib/ridePref'
+import { useTheme, type ThemePref } from '@/lib/theme'
 import type { Contact, Member, Profile } from '@/lib/types'
 
 type Edit = null | 'phone' | 'contacts' | 'guardian' | 'home' | 'medical' | 'backtap'
 
 
-/** "Safety settings", rows open edit sheets; keychain pairing is a demo mock. */
+/** Settings in grouped sections; each row opens an edit sheet. */
 export function Settings() {
   const { userId, profile, refreshProfile, signOut } = useAuth()
   const navigate = useNavigate()
@@ -62,10 +63,9 @@ export function Settings() {
   return (
     <Screen>
       <Header title="Settings" back={true} />
-      <Title>Safety settings</Title>
 
-      <div className="mt-5 rounded-xl2 bg-bg-card p-4">
-        <p className="mb-3 text-sm font-bold uppercase tracking-wide text-ink-dim">Profile picture</p>
+      {/* Profile header */}
+      <div className="flex items-center gap-4 rounded-2xl bg-surface-lowest p-4 dark:bg-surface-mid">
         <AvatarPicker
           userId={userId}
           name={profile.name}
@@ -74,56 +74,102 @@ export function Settings() {
         />
       </div>
 
-      <div className="mt-5 divide-y divide-white/5 rounded-xl2 bg-bg-card">
-        <Row title="Phone" detail={formatPhone(profile.phone)} onClick={() => setEdit('phone')} />
+      <ListSection title="Safety">
         <Row
+          icon={<PhoneIcon width={20} height={20} />}
           title="Emergency contact"
           detail={
-            contacts.length ? `${contacts[0].name}${contacts.length > 1 ? ` • +${contacts.length - 1} more` : ''}` : 'Not set'
+            contacts.length ? `${contacts[0].name}${contacts.length > 1 ? ` · +${contacts.length - 1} more` : ''}` : 'Not set'
           }
+          description="Gets a text if you press HELP"
           onClick={() => setEdit('contacts')}
         />
         <Row
+          icon={<ShieldIcon width={20} height={20} />}
           title="Personal guardian"
           detail={
             me?.guardian_name
-              ? `${me.guardian_name} • Home tonight`
-              : `Asked each night${contacts[0] ? ` • defaults to ${contacts[0].name}` : ''}`
+              ? `${me.guardian_name} · home tonight`
+              : `Asked each night${contacts[0] ? ` · defaults to ${contacts[0].name}` : ''}`
           }
+          description="The sober person at home who receives escalations"
           onClick={() => setEdit('guardian')}
         />
-        <Row title="Home" detail={profile.home_address ?? 'Not set'} onClick={() => setEdit('home')} />
-        <Row title="Medical info" detail={profile.medical_info || 'None'} onClick={() => setEdit('medical')} />
-      </div>
-
-      <RideAppCard />
-
-      <SmsCard />
-
-      <KeychainCard />
-
-      <div className="mt-5 rounded-xl2 bg-bg-card">
         <Row
-          title="iPhone Back Tap"
-          detail="Accessibility → Touch → Back Tap. Assign a shortcut and test it first."
-          onClick={() => setEdit('backtap')}
+          icon={<HomeIcon width={20} height={20} />}
+          title="Home"
+          detail={profile.home_address ?? 'Not set'}
+          description="Used for Get me home and arrival checks"
+          onClick={() => setEdit('home')}
         />
-      </div>
+        <Row
+          icon={<HeartIcon />}
+          title="Medical info"
+          detail={profile.medical_info || 'None'}
+          description="Only shown on your safety card and the emergency screen"
+          onClick={() => setEdit('medical')}
+        />
+      </ListSection>
 
-      <div className="mt-5 rounded-xl2 bg-bg-card p-4">
-        <p className="font-bold">Left-alone alerts</p>
-        <p className="mt-2 text-ink-dim">
-          You get a reminder after leaving a venue with no group member nearby, with a 2-minute buffer. If you leave with
-          friends, it stays quiet. Alerts stay on until a friend taps “I'm on it”.
-        </p>
-      </div>
+      <ListSection title="Account">
+        <Row
+          icon={<UserIcon width={20} height={20} />}
+          title="Phone"
+          detail={formatPhone(profile.phone)}
+          description="The number you sign in with"
+          onClick={() => setEdit('phone')}
+        />
+      </ListSection>
 
-      <div className="mt-5">
+      <section>
+        <h2 className="section-title">Alerts and devices</h2>
+        <KeychainCard />
+        <div className="mt-2 divide-y divide-line/70 overflow-hidden rounded-2xl bg-surface-lowest dark:bg-surface-mid">
+          <Row
+            icon={<HandIcon width={20} height={20} />}
+            title="iPhone Back Tap"
+            detail="Accessibility → Touch → Back Tap"
+            description="Assign a shortcut and test it first"
+            onClick={() => setEdit('backtap')}
+          />
+          <div className="flex gap-4 px-4 py-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary-container/70 text-secondary-on-container">
+              <BellIcon width={20} height={20} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-lg">Left-alone alerts</span>
+              <span className="mt-0.5 block text-xs text-ink-dim">
+                A reminder after you leave a venue with no group member nearby, with a 2-minute buffer. Quiet if you leave
+                with friends. Alerts stay on until a friend taps “I'm on it”.
+              </span>
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="section-title">Text messages</h2>
+        <SmsCard />
+      </section>
+
+      <section>
+        <h2 className="section-title">Going home</h2>
+        <RideAppCard />
+      </section>
+
+      <section>
+        <h2 className="section-title">Appearance</h2>
+        <ThemeCard />
+      </section>
+
+      <section>
+        <h2 className="section-title">Permissions</h2>
         <PermissionsCard />
-      </div>
+      </section>
 
       <Button
         variant="text"
+        className="mt-4"
         onClick={async () => {
           await signOut()
           navigate('/signup', { replace: true })
@@ -134,8 +180,8 @@ export function Settings() {
 
       {/* Edit sheets */}
       <Sheet open={edit === 'phone'} onClose={() => setEdit(null)} title="Phone">
-        <p className="text-2xl font-bold">{formatPhone(profile.phone)}</p>
-        <p className="mt-2 text-ink-dim">
+        <p className="text-2xl">{formatPhone(profile.phone)}</p>
+        <p className="mt-2 text-base text-ink-dim">
           This is the number you sign in with{AUTH_MODE === 'mock' ? ' (demo sign-in)' : ''}. To use a different number,
           sign out and sign in again.
         </p>
@@ -161,7 +207,7 @@ export function Settings() {
           />
         ) : (
           <Sheet open onClose={() => setEdit(null)} title="Personal guardian">
-            <p className="text-lg text-ink-dim">
+            <p className="text-base text-ink-dim">
               Your guardian is the sober person at home for a given night. Tether asks who it is each time you start or
               join a party, and suggests {contacts[0]?.name ?? 'your emergency contact'} first.
             </p>
@@ -179,15 +225,60 @@ export function Settings() {
   )
 }
 
-function Row({ title, detail, onClick }: { title: string; detail: ReactNode; onClick: () => void }) {
+/** Google Settings-style row: icon, title, current value, a description, chevron. */
+function Row({
+  icon,
+  title,
+  detail,
+  description,
+  onClick,
+}: {
+  icon: ReactNode
+  title: string
+  detail: ReactNode
+  description?: string
+  onClick: () => void
+}) {
   return (
-    <button onClick={onClick} className="flex min-h-tap w-full items-center gap-3 px-4 py-3 text-left">
-      <span className="min-w-0 flex-1">
-        <span className="block text-lg font-bold">{title}</span>
-        <span className="block truncate text-base text-ink-dim">{detail}</span>
+    <button onClick={onClick} className="flex min-h-[64px] w-full items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-ink/[0.04]">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary-container/70 text-secondary-on-container">
+        {icon}
       </span>
-      <ChevronRightIcon width={20} height={20} className="shrink-0 text-ink-dim" />
+      <span className="min-w-0 flex-1">
+        <span className="block text-lg">{title}</span>
+        <span className="block truncate text-base text-ink-dim">{detail}</span>
+        {description && <span className="mt-0.5 block text-xs text-ink-faint">{description}</span>}
+      </span>
+      <ChevronRightIcon width={18} height={18} className="shrink-0 text-ink-faint" />
     </button>
+  )
+}
+
+function HeartIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" />
+    </svg>
+  )
+}
+
+/** Light / dark / follow the phone (this device only). */
+function ThemeCard() {
+  const { pref, setPref } = useTheme()
+  return (
+    <div className="rounded-2xl bg-surface-lowest p-4 dark:bg-surface-mid">
+      <p className="text-lg">Theme</p>
+      <p className="mb-3 text-xs text-ink-dim">Saved on this device. System follows your phone's setting.</p>
+      <Segmented<ThemePref>
+        value={pref}
+        onChange={setPref}
+        options={[
+          { value: 'light', label: 'Light', icon: <SunIcon width={16} height={16} /> },
+          { value: 'dark', label: 'Dark', icon: <MoonIcon width={16} height={16} /> },
+          { value: 'system', label: 'System' },
+        ]}
+      />
+    </div>
   )
 }
 
@@ -223,9 +314,9 @@ function ContactsSheet({ profile, onClose, onSave }: { profile: Profile; onClose
     <Sheet open onClose={onClose} title="Emergency contacts">
       <div className="flex flex-col gap-3">
         {list.map((c, i) => (
-          <div key={i} className="rounded-xl2 border border-danger-line bg-bg-card px-4 pb-2 pt-3">
+          <div key={i} className="rounded-xl border border-outline px-4 pb-2 pt-3 focus-within:border-primary">
             <div className="flex items-center justify-between">
-              <p className="font-semibold">Emergency Contact{i > 0 ? ` ${i + 1}` : ''}</p>
+              <p className="text-xs font-medium text-ink-dim">Emergency contact{i > 0 ? ` ${i + 1}` : ''}</p>
               {i > 0 && (
                 <button
                   aria-label="Remove contact"
@@ -240,21 +331,21 @@ function ContactsSheet({ profile, onClose, onSave }: { profile: Profile; onClose
               placeholder="Name"
               value={c.name}
               onChange={(e) => set(i, { name: e.target.value })}
-              className="block h-11 w-full bg-transparent placeholder:text-ink-faint focus:outline-none"
+              className="block h-11 w-full bg-transparent text-lg placeholder:text-ink-faint focus:outline-none"
             />
             <input
               placeholder="Phone"
               type="tel"
               value={c.phone}
               onChange={(e) => set(i, { phone: e.target.value })}
-              className="block h-11 w-full bg-transparent placeholder:text-ink-faint focus:outline-none"
+              className="block h-11 w-full border-t border-line bg-transparent text-lg placeholder:text-ink-faint focus:outline-none"
             />
           </div>
         ))}
       </div>
       <button
         type="button"
-        className="mt-2 flex min-h-[48px] items-center gap-2 font-semibold text-ink underline underline-offset-4"
+        className="mt-2 flex min-h-[44px] items-center gap-2 rounded-full px-2 text-sm font-medium text-primary-ink"
         onClick={() => setList((l) => [...l, { name: '', phone: '' }])}
       >
         <PlusIcon width={18} height={18} />
@@ -318,7 +409,7 @@ function HomeSheet({ profile, onClose, onSave }: { profile: Profile; onClose: ()
         onChange={(e) => setAddress(e.target.value)}
         autoComplete="street-address"
       />
-      <button onClick={useHere} disabled={locating} className="mt-1 min-h-[44px] text-sm font-semibold text-accent-pink">
+      <button onClick={useHere} disabled={locating} className="mt-1 min-h-[44px] rounded-full px-1 text-sm font-medium text-primary-ink">
         {locating ? 'Finding you…' : "I'm home right now, use this spot"}
       </button>
       <div className="mt-2">
@@ -361,24 +452,17 @@ function RideAppCard() {
     setApp(a)
   }
   return (
-    <div className="mt-5 rounded-xl2 bg-bg-card p-4">
-      <p className="text-lg font-bold">Ride app</p>
-      <p className="text-base text-ink-dim">"Get a ride" opens this app.</p>
-      <div className="mt-3 grid grid-cols-2 gap-3" role="radiogroup" aria-label="Ride app">
-        {(['uber', 'lyft'] as const).map((a) => (
-          <button
-            key={a}
-            role="radio"
-            aria-checked={app === a}
-            onClick={() => pick(a)}
-            className={`min-h-tap rounded-xl2 border-2 text-lg font-bold ${
-              app === a ? 'border-white bg-white text-black' : 'border-white/30 text-ink'
-            }`}
-          >
-            {a === 'uber' ? 'Uber' : 'Lyft'}
-          </button>
-        ))}
-      </div>
+    <div className="rounded-2xl bg-surface-lowest p-4 dark:bg-surface-mid">
+      <p className="text-lg">Ride app</p>
+      <p className="mb-3 text-xs text-ink-dim">"Get a ride" on the Going home screen opens this app.</p>
+      <Segmented<RideApp>
+        value={app}
+        onChange={pick}
+        options={[
+          { value: 'uber', label: 'Uber' },
+          { value: 'lyft', label: 'Lyft' },
+        ]}
+      />
     </div>
   )
 }

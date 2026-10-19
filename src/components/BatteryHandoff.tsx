@@ -6,7 +6,7 @@ import { hasLocation, placeName } from '@/lib/geo'
 import { formatClock } from '@/lib/time'
 import type { Alert, Member } from '@/lib/types'
 import { ArrowLeftIcon, BatteryIcon, UsersIcon } from './icons'
-import { Eyebrow, InfoCard } from './ui'
+import { Eyebrow, IconButton, InfoCard } from './ui'
 import { buttonClass } from './buttons'
 
 /**
@@ -38,21 +38,17 @@ export function BatteryHandoff({
   }, [alert.id])
 
   return (
-    <div className="fixed inset-0 z-[2000] flex justify-center bg-bg">
-      <div className="flex w-full max-w-app flex-col overflow-y-auto px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
-        <div className="mb-4 grid min-h-tap grid-cols-[3.25rem_1fr_3.25rem] items-center">
-          <button
-            aria-label="Not now"
-            onClick={onClose}
-            className="-ml-2 flex h-[52px] w-[52px] items-center justify-center rounded-full text-ink active:bg-white/10"
-          >
-            <ArrowLeftIcon width={26} height={26} strokeWidth={2.25} />
-          </button>
-          <h1 className="text-center text-xl font-bold tracking-tight">Phone dying</h1>
+    <div className="fixed inset-0 z-[2000] flex animate-fade-in justify-center bg-surface">
+      <div className="flex w-full max-w-app flex-col overflow-y-auto px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
+        <div className="-mx-1 mb-3 flex min-h-[56px] items-center gap-1">
+          <IconButton label="Not now" onClick={onClose} className="text-ink">
+            <ArrowLeftIcon width={22} height={22} strokeWidth={2} />
+          </IconButton>
+          <h1 className="pl-1 text-2xl">Phone dying</h1>
         </div>
 
         <Eyebrow>{level != null ? `${level}% battery` : 'Phone dying'}</Eyebrow>
-        <h1 className="mt-1 text-[2rem] font-bold leading-tight tracking-tight">
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight">
           {name}'s phone is dying. Stay with {name}.
         </h1>
 

@@ -149,19 +149,19 @@ export function GetHomeScreen() {
       <Screen>
         <Header title="Going home" back={back} />
         <div className="flex flex-1 flex-col justify-center text-center">
-          <p className="text-4xl font-extrabold">You're home.</p>
-          <p className="mt-3 text-xl text-ink-dim">The party stays open until everyone is home.</p>
+          <p className="text-4xl font-normal tracking-tight">You're home.</p>
+          <p className="mt-3 text-lg text-ink-dim">The party stays open until everyone is home.</p>
           {others.length > 0 && (
-            <p className="mt-3 text-xl">
+            <p className="mt-3 text-lg">
               {othersHome} of {others.length} {others.length === 1 ? 'friend is' : 'friends are'} home.
             </p>
           )}
         </div>
         <div className="flex flex-col gap-3 pt-6">
-          <button onClick={() => navigate('/', { replace: true })} className={`${buttonClass('primary', true)} min-h-[72px]`}>
+          <button onClick={() => navigate('/', { replace: true })} className={buttonClass('primary', true)}>
             Go to home screen
           </button>
-          <button onClick={() => navigate(back)} className={`${buttonClass('secondary', true)} min-h-[72px]`}>
+          <button onClick={() => navigate(back)} className={buttonClass('secondary', true)}>
             Keep watching the group
           </button>
         </div>
@@ -169,7 +169,8 @@ export function GetHomeScreen() {
     )
   }
 
-  const bigChoice = 'flex min-h-[88px] w-full items-center justify-center gap-3 rounded-2xl text-2xl font-extrabold active:scale-[0.98]'
+  const bigChoice =
+    'flex min-h-[72px] w-full items-center gap-4 rounded-[20px] bg-surface-lowest px-5 text-left text-xl font-medium shadow-e1 active:scale-[0.98] dark:bg-surface-mid [&>svg]:text-primary-ink'
 
   return (
     <Screen>
@@ -177,53 +178,54 @@ export function GetHomeScreen() {
 
       {!onTheWay ? (
         <>
-          <h2 className="text-[2.25rem] font-extrabold leading-tight tracking-tight">How are you getting home?</h2>
-          <div className="mt-8 flex flex-col gap-4">
-            <button disabled={busy} onClick={() => choose('Walking')} className={`${bigChoice} bg-white text-black disabled:opacity-40`}>
-              <WalkIcon width={30} height={30} strokeWidth={2.2} /> Walking
+          <h2 className="text-2xl font-medium tracking-tight">How are you getting home?</h2>
+          <p className="mt-1 text-base text-ink-dim">Your group sees you heading home and Tether watches until you arrive.</p>
+          <div className="mt-6 flex flex-col gap-3">
+            <button disabled={busy} onClick={() => choose('Walking')} className={`${bigChoice} disabled:opacity-40`}>
+              <WalkIcon width={24} height={24} strokeWidth={2} /> Walking
             </button>
             <a
               href={rideUrl(getRideApp(), myPos, homeLL, profile?.home_address ?? null)}
               target="_blank"
               rel="noreferrer"
               onClick={() => choose(getRideApp() === 'lyft' ? 'Lyft' : 'Uber')}
-              className={`${bigChoice} bg-white text-black`}
+              className={`${bigChoice}`}
             >
-              <CarIcon width={30} height={30} strokeWidth={2.2} /> Get a ride
+              <CarIcon width={24} height={24} strokeWidth={2} /> Get a ride
             </a>
-            <a href={`tel:${SAFERIDE_PHONE.replace(/[^\d+]/g, '')}`} onClick={() => choose('SafeRide')} className={`${bigChoice} bg-white text-black`}>
-              <PhoneIcon width={30} height={30} strokeWidth={2.2} /> Call SafeRide
+            <a href={`tel:${SAFERIDE_PHONE.replace(/[^\d+]/g, '')}`} onClick={() => choose('SafeRide')} className={`${bigChoice}`}>
+              <PhoneIcon width={24} height={24} strokeWidth={2} /> Call SafeRide
             </a>
           </div>
         </>
       ) : (
         <>
-          <h2 className="text-[2.5rem] font-extrabold leading-tight tracking-tight">Heading home.</h2>
-          <p className="mt-2 text-xl text-ink">Your friends can see you. Alerts stay on until you're home.</p>
+          <h2 className="text-2xl font-medium tracking-tight">Heading home</h2>
+          <p className="mt-1 text-base text-ink-dim">Your friends can see you. Alerts stay on until you're home.</p>
           {others.length > 0 && (
-            <p className="mt-4 text-xl text-ink-dim">
+            <p className="mt-3 text-base">
               {othersHome} of {others.length} {others.length === 1 ? 'friend is' : 'friends are'} home.
             </p>
           )}
 
-          <div className="mt-auto flex flex-col gap-4 pt-8">
+          <div className="mt-auto flex flex-col gap-3 pt-8">
             {hasHome && (
               <a
                 href={directionsUrl(homeLL, profile?.home_address ?? null)}
                 target="_blank"
                 rel="noreferrer"
-                className={`${bigChoice} bg-white text-black`}
+                className={`${bigChoice}`}
               >
                 Directions home
               </a>
             )}
 
             {farConfirm ? (
-              <div className="rounded-2xl border-2 border-white/40 p-4" role="alertdialog" aria-labelledby="far-home">
-                <p id="far-home" className="text-xl font-bold">
+              <div className="rounded-2xl border border-outline p-4" role="alertdialog" aria-labelledby="far-home">
+                <p id="far-home" className="text-xl font-medium">
                   You look {formatDistance(awayFromHome ?? 0)} from home.
                 </p>
-                <p className="text-lg text-ink-dim">Only say you're home once you're inside.</p>
+                <p className="text-base text-ink-dim">Only say you're home once you're inside.</p>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <button onClick={() => setFarConfirm(false)} className={buttonClass('secondary', true)}>
                     Not yet
@@ -245,12 +247,12 @@ export function GetHomeScreen() {
                 disabled={busy}
                 onComplete={confirmHome}
                 ariaLabel="I'm home. Press and hold to confirm."
-                className="flex min-h-[96px] w-full items-center justify-center rounded-2xl bg-safe text-black disabled:opacity-40"
+                className="flex min-h-[80px] w-full items-center justify-center rounded-[20px] bg-safe text-black shadow-e1 disabled:opacity-40"
               >
                 {(progress) => (
                   <span className="flex items-center gap-4">
                     <HoldRing progress={progress} />
-                    <span className="text-2xl font-extrabold">{busy ? 'Saving…' : "Hold when you're home"}</span>
+                    <span className="text-xl font-medium">{busy ? 'Saving…' : "Hold when you're home"}</span>
                   </span>
                 )}
               </HoldButton>
@@ -263,7 +265,7 @@ export function GetHomeScreen() {
                 setRepicking(true)
                 setFarConfirm(false)
               }}
-              className="min-h-[52px] text-lg text-ink-dim underline underline-offset-4"
+              className="min-h-tap rounded-full text-sm font-medium text-primary-ink"
             >
               Changed plans? Pick another way home
             </button>
@@ -271,28 +273,28 @@ export function GetHomeScreen() {
         </>
       )}
 
-      {error && <p className="mt-4 rounded-xl bg-status-alert/15 px-4 py-3 text-lg text-status-alert">{error}</p>}
+      {error && <p className="mt-4 rounded-xl bg-status-alert/10 px-4 py-3 text-base text-status-alert">{error}</p>}
 
       {!hasHome && (
-        <Link to="/settings?edit=home" className="mt-4 block min-h-[48px] py-2 text-center text-lg text-ink-dim underline underline-offset-4">
+        <Link to="/settings?edit=home" className="mt-4 block min-h-tap py-3 text-center text-sm font-medium text-primary-ink">
           Add home address for directions
         </Link>
       )}
 
       {arrived && (
-        <div className="fixed inset-0 z-[2000] flex justify-center bg-bg" role="alertdialog" aria-labelledby="arrived">
+        <div className="fixed inset-0 z-[2000] flex animate-fade-in justify-center bg-surface" role="alertdialog" aria-labelledby="arrived">
           <div className="flex w-full max-w-app flex-col px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(3rem,env(safe-area-inset-top))]">
             <div className="flex flex-1 flex-col items-center justify-center text-center">
-              <h1 id="arrived" className="text-5xl font-extrabold">
+              <h1 id="arrived" className="text-4xl font-normal tracking-tight">
                 You're home?
               </h1>
             </div>
             <button
               disabled={busy}
               onClick={() => void imHome()}
-              className="flex min-h-[112px] w-full items-center justify-center gap-3 rounded-3xl bg-safe text-3xl font-extrabold text-black active:scale-[0.98] disabled:opacity-40"
+              className="flex min-h-[72px] w-full items-center justify-center gap-3 rounded-full bg-safe text-2xl font-medium text-black shadow-e1 active:scale-[0.98] disabled:opacity-40"
             >
-              <CheckIcon width={36} height={36} strokeWidth={2.5} /> Yes, I'm home
+              <CheckIcon width={28} height={28} strokeWidth={2.5} /> Yes, I'm home
             </button>
             <button
               onClick={() => {
@@ -301,7 +303,7 @@ export function GetHomeScreen() {
                 setSnoozedUntil(until)
                 setNow(Date.now())
               }}
-              className="mt-4 min-h-[56px] text-xl text-ink-dim underline underline-offset-4"
+              className="mt-3 min-h-[52px] rounded-full text-lg font-medium text-primary-ink"
             >
               Not yet
             </button>

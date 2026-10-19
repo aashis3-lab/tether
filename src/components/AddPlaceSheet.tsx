@@ -55,7 +55,7 @@ export function AddPlaceSheet({
 
   return (
     <Sheet open onClose={onClose} title="Add place">
-      <label className="flex min-h-tap items-center gap-3 rounded-xl2 border border-white/15 bg-bg-card px-4">
+      <label className="flex min-h-tap items-center gap-3 rounded-xl border border-line bg-surface-high/70 px-4">
         <SearchIcon width={20} height={20} className="shrink-0 text-ink-dim" />
         <input
           value={query}
@@ -67,20 +67,20 @@ export function AddPlaceSheet({
 
       <button
         onClick={onPickOnMap}
-        className="mt-3 flex min-h-tap w-full items-center gap-3 rounded-xl2 bg-accent-pink/15 px-4 text-left font-semibold text-accent-pink"
+        className="mt-3 flex min-h-tap w-full items-center gap-3 rounded-xl bg-accent-pink/15 px-4 text-left font-semibold text-primary-ink"
       >
         <MapPickIcon width={22} height={22} />
         Pick on map
       </button>
 
-      <p className="mb-2 mt-5 text-sm font-semibold uppercase tracking-wide text-ink-faint">
+      <p className="mb-2 mt-5 text-sm font-medium text-primary-ink">
         {query.trim() ? 'Results' : 'Nearby'}
       </p>
-      <ul className="divide-y divide-white/5 rounded-xl2 bg-bg-card">
+      <ul className="divide-y divide-line/70 rounded-xl bg-surface-high/70">
         {list.map((d) => (
           <li key={`${d.name}-${d.lat}-${d.lng}`}>
             <button onClick={() => setChosen(d)} className="flex min-h-tap w-full items-center gap-3 px-4 py-3 text-left">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/5 text-accent-orange">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink/5 text-secondary-ink">
                 <PlaceKindIcon kind={d.kind} />
               </span>
               <span className="min-w-0 flex-1">
@@ -99,11 +99,11 @@ export function AddPlaceSheet({
 
       {pins.length > 0 && (
         <>
-          <p className="mb-2 mt-5 text-sm font-semibold uppercase tracking-wide text-ink-faint">Your places</p>
-          <ul className="divide-y divide-white/5 rounded-xl2 bg-bg-card">
+          <p className="mb-2 mt-5 text-sm font-medium text-primary-ink">Your places</p>
+          <ul className="divide-y divide-line/70 rounded-xl bg-surface-high/70">
             {pins.map((p) => (
               <li key={p.id} className="flex min-h-[52px] items-center gap-3 px-4">
-                <PinIcon width={18} height={18} className="shrink-0 text-accent-orange" />
+                <PinIcon width={18} height={18} className="shrink-0 text-secondary-ink" />
                 <span className="flex-1 truncate font-semibold">{p.name}</span>
                 <button
                   onClick={() => void attempt("Couldn't remove place", supabase.from('pins').delete().eq('id', p.id))}

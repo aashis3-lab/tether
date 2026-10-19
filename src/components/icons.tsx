@@ -279,3 +279,36 @@ export const UserCheckIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="M3 20c0-3.6 2.9-6 6.5-6 1.7 0 3.2.5 4.3 1.4M15.5 17.5l2 2 4-4.5" />
   </Svg>
 )
+
+export const NavigateIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}>
+    <path d="m3 11 18-8-8 18-2-8-8-2Z" />
+  </Svg>
+)
+
+export const SunIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+  </Svg>
+)
+
+export const MoonIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}>
+    <path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z" />
+  </Svg>
+)
+
+export const HistoryIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}>
+    <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+    <path d="M3 3v5h5M12 7v5l3 2" />
+  </Svg>
+)
+
+export const LayersIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}>
+    <path d="m12 3 9 5-9 5-9-5 9-5Z" />
+    <path d="m3 13 9 5 9-5" />
+  </Svg>
+)

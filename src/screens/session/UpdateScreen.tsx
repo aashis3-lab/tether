@@ -82,11 +82,11 @@ export function UpdateScreen() {
     <Screen>
       <Header title="Status" back={back} />
       <Title>What's happening?</Title>
-      <p className="mt-1 text-ink-dim">
+      <p className="mt-1 text-base text-ink-dim">
         {current ? (
           <>
-            Now: <span className="font-semibold text-ink">{me?.status_note || current.label}</span>
-            {me && activityTimeLeft(me) && <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-sm">{activityTimeLeft(me)} left</span>}
+            Now: <span className="font-medium text-ink">{me?.status_note || current.label}</span>
+            {me && activityTimeLeft(me) && <span className="ml-2 rounded-full bg-secondary-container px-2 py-0.5 text-xs text-secondary-on-container">{activityTimeLeft(me)} left</span>}
           </>
         ) : (
           'Pick one. It replaces your last update.'
@@ -100,23 +100,23 @@ export function UpdateScreen() {
           // Only the current status is highlighted. "Someone new" keeps its amber label so it never looks like leaving with a friend.
           const tone = active
             ? a.key === 'leaving_new'
-              ? 'border-status-checkin bg-status-checkin/20'
-              : 'border-white bg-white/15'
-            : 'border-white/10 bg-bg-card'
+              ? 'border-status-checkin bg-status-checkin/15'
+              : 'border-primary bg-primary-container/60'
+            : 'border-transparent bg-surface-lowest dark:bg-surface-mid'
           return (
             <button
               key={a.key}
               disabled={busy !== null}
               onClick={() => tap(a)}
               aria-pressed={active}
-              className={`flex min-h-[124px] flex-col items-center justify-center gap-2 rounded-2xl border-2 p-3 text-center transition active:scale-95 disabled:opacity-40 ${tone} ${
-                i === STATUS_CHOICES.length - 1 && STATUS_CHOICES.length % 2 ? 'col-span-2 min-h-[96px]' : ''
+              className={`flex min-h-[104px] flex-col items-center justify-center gap-2 rounded-2xl border-2 p-3 shadow-e1 text-center transition active:scale-95 disabled:opacity-40 ${tone} ${
+                i === STATUS_CHOICES.length - 1 && STATUS_CHOICES.length % 2 ? 'col-span-2 min-h-[80px]' : ''
               }`}
             >
-              <span className="text-5xl" aria-hidden="true">
+              <span className="text-4xl" aria-hidden="true">
                 {a.emoji}
               </span>
-              <span className={`text-lg font-bold leading-tight ${a.key === 'leaving_new' ? 'text-status-checkin' : ''}`}>
+              <span className={`text-lg font-medium leading-tight ${a.key === 'leaving_new' ? 'text-status-checkin' : ''}`}>
                 {busy === a.key ? '…' : a.tile ?? a.label}
               </span>
             </button>
@@ -133,12 +133,12 @@ export function UpdateScreen() {
 
       {/* Pinned to the bottom: confirmation (after an update) and Back with group. */}
       <div className="fixed inset-x-0 bottom-0 z-[900] flex justify-center">
-        <div className="w-full max-w-app bg-gradient-to-t from-bg via-bg to-bg/0 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-6">
+        <div className="w-full max-w-app bg-gradient-to-t from-surface via-surface to-surface/0 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-6">
           {sent && (
-            <div className="mb-3 animate-enter rounded-2xl bg-white p-4 text-black shadow-lg" aria-live="polite">
-              <p className="text-lg font-bold">Sent to your group</p>
-              <p className="font-medium">{sent}</p>
-              <button onClick={() => navigate(back)} className="mt-3 min-h-[52px] w-full rounded-xl bg-black text-lg font-bold text-white">
+            <div className="mb-3 animate-enter rounded-xl bg-inverse p-4 text-inverse-on shadow-e3" aria-live="polite">
+              <p className="text-xs opacity-80">Sent to your group</p>
+              <p className="text-lg font-medium">{sent}</p>
+              <button onClick={() => navigate(back)} className="mt-3 min-h-tap w-full rounded-full bg-primary text-base font-medium text-primary-on">
                 Back to map
               </button>
             </div>
@@ -147,7 +147,7 @@ export function UpdateScreen() {
             disabled={busy !== null}
             onClick={() => tap(def('back'))}
             aria-pressed={!current}
-            className={`${buttonClass('safe', true)} min-h-[68px]`}
+            className={buttonClass('safe', true)}
           >
             <span aria-hidden="true">✅</span> {busy === 'back' ? '…' : 'Back with group'}
           </button>
@@ -163,11 +163,11 @@ export function UpdateScreen() {
               <button
                 key={o.id}
                 onClick={() => setFriends((f) => (on ? f.filter((x) => x !== o.id) : [...f, o.id]))}
-                className={`flex min-h-tap items-center gap-3 rounded-xl2 border px-3 text-left ${on ? 'border-accent-pink bg-accent-pink/10' : 'border-white/10 bg-bg-card'}`}
+                className={`flex min-h-[56px] items-center gap-3 rounded-xl px-3 text-left transition-colors ${on ? 'bg-primary-container/60' : 'bg-surface-lowest dark:bg-surface-mid'}`}
               >
                 <Avatar name={o.name} url={avatars[o.id]} size={36} />
-                <span className="flex-1 font-semibold">{firstName(o.name)}</span>
-                {on && <CheckCircleIcon width={20} height={20} className="text-accent-pink" />}
+                <span className="flex-1 text-lg">{firstName(o.name)}</span>
+                {on && <CheckCircleIcon width={20} height={20} className="text-primary-ink" />}
               </button>
             )
           })}
@@ -183,13 +183,13 @@ export function UpdateScreen() {
         >
           Leaving together
         </Button>
-        <p className="mt-2 text-center text-base text-ink-dim">Keeps the left-alone alert quiet.</p>
+        <p className="mt-2 text-center text-xs text-ink-dim">Keeps the left-alone alert quiet.</p>
       </Sheet>
 
       {/* Leaving with someone new: their name (checks stay on). */}
       <Sheet open={picker === 'leaving_new'} onClose={() => setPicker(null)} title="Leaving with someone new">
         <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Their name" className={inputClass} autoFocus />
-        <p className="mt-2 text-base text-ink-dim">They're not in your group, so automatic check-ins stay on.</p>
+        <p className="mt-2 text-xs text-ink-dim">They're not in your group, so automatic check-ins stay on.</p>
         <Button
           className="mt-4"
           disabled={!newName.trim() || busy !== null}
