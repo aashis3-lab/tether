@@ -363,3 +363,18 @@ Use two windows (A = Maya, B = Jake) in the same night out. Set `VITE_DEMO_SPEED
 
 See [CLAUDE.md](./CLAUDE.md) for the full phase breakdown (auth, sessions, escalation ladder,
 automatic rules, demo control panel, lock screen/wallet/fake call, SMS/push, Vercel deploy).
+
+## Venue search (Google Places)
+
+Venue search, nearby suggestions and address lookups use Google Maps Platform when
+`VITE_GOOGLE_MAPS_KEY` is set (map tiles stay on MapTiler):
+
+1. In Google Cloud, create a project with billing, then enable **Places API (New)** and
+   **Geocoding API**.
+2. Create an API key, restrict it to those two APIs and to HTTP referrers
+   (`http://localhost:5173/*`, `https://<your-app>.vercel.app/*`).
+3. Put it in `.env` as `VITE_GOOGLE_MAPS_KEY=…`, and add the same variable in Vercel.
+
+Without the key, search falls back to MapTiler geocoding plus OpenStreetMap (Overpass,
+Nominatim).
+

@@ -1,3 +1,5 @@
+import { googleAvailable, googleGeocode, googlePlaceName, googleReverse } from './google'
+import { approximateLocation } from './places'
 import type { LatLng } from './types'
 
 const EARTH_RADIUS_M = 6_371_000
@@ -36,8 +38,13 @@ export function hasLocation<T extends { lat: number | null; lng: number | null }
   return x.lat != null && x.lng != null
 }
 
-/** Free-text address -> coordinates via OpenStreetMap Nominatim. */
-export async function geocode(address: string): Promise<LatLng | null> {
+/**
+ * Free-text address -> coordinates. Google Geocoding when a key is set,
+ * biased to `near` (or, without it, your rough IP location) so "707 S Third
+ * St" lands in your town; otherwise OpenStreetMap Nominatim.
+ */
+export async function geocode(address: string, near?: LatLng | null): Promise<LatLng | null> {
+  if (googleAvailable) return googleGeocode(address, near ?? (await approximateLocation()))
   const url =
     'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' +
     encodeURIComponent(address)
@@ -88,8 +95,9 @@ export function mapsLink(p: LatLng): string {
   return `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`
 }
 
-/** Best-effort street address for a point (Nominatim). */
+/** Best-effort street address for a point (Google, else Nominatim). */
 export async function reverseGeocode(p: LatLng): Promise<string | null> {
+  if (googleAvailable) return googleReverse(p)
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&lat=${p.lat}&lon=${p.lng}`,
@@ -104,6 +112,7 @@ export async function reverseGeocode(p: LatLng): Promise<string | null> {
 
 /** Short place label for a point, e.g. "Illini Union" or "W Green St". */
 export async function placeName(p: LatLng): Promise<string | null> {
+  if (googleAvailable) return googlePlaceName(p)
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&lat=${p.lat}&lon=${p.lng}`,

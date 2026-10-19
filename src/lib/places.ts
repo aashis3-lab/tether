@@ -1,8 +1,10 @@
 import type { Destination, PlaceKind } from './nightDraft'
+import { googleAvailable, googleNearby, googleSearch } from './google'
 import { supabase } from './supabase'
 import type { LatLng } from './types'
 
-// Place search via MapTiler Geocoding (same key as the map tiles).
+// Place search: Google Places (New) when VITE_GOOGLE_MAPS_KEY is set, else
+// MapTiler Geocoding (same key as the map tiles) plus OpenStreetMap Overpass.
 const KEY = import.meta.env.VITE_MAPTILER_KEY
 
 interface Feature {
@@ -46,6 +48,8 @@ const LOCAL_DEG_LNG = 0.48
  * closest first, then anything else.
  */
 export async function searchPlaces(query: string, near: LatLng | null) {
+  // Google Places (New) when a key is set: best venue data, already location-biased.
+  if (googleAvailable) return googleSearch(query, near)
   if (!near) {
     if (import.meta.env.DEV) console.info('[tether] search not location-biased: no GPS, home address or IP location yet')
     return geocode(query, null, '&autocomplete=true&limit=10')
@@ -216,6 +220,13 @@ export async function nearbyPlacesLive(near: LatLng | null, onUpdate: (list: Des
     onUpdate(current)
   }
 
+  if (googleAvailable) {
+    push(await googleNearby(near, 2000))
+    if (current.length < MIN_RESULTS) push(await googleNearby(near, 4000))
+    writeCache(near, current)
+    return current
+  }
+
   const [mt, op] = [mapTilerNearby(near), overpassNearby(near, 2000)]
   void mt.then(push)
   const osm = await op
@@ -256,7 +267,7 @@ export function rememberDestinations(ds: Destination[]) {
   }
 }
 
-export const placesAvailable = Boolean(KEY)
+export const placesAvailable = Boolean(KEY) || googleAvailable
 
 /** Rough location from the phone's IP address (city level), for biasing when GPS is off. */
 export async function approximateLocation(): Promise<LatLng | null> {
