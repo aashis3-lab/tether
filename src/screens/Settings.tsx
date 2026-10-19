@@ -26,8 +26,8 @@ import {
 import { KeychainCard } from '@/components/KeychainCard'
 import { PermissionsCard } from '@/components/PermissionsCard'
 import { SmsCard } from '@/components/SmsCard'
-import { BottomNav } from '@/components/BottomNav'
-import { Header, Button, ErrorText, Field, Screen, Segmented, Sheet } from '@/components/ui'
+import { TabScreen } from '@/components/BottomNav'
+import { Header, Button, ErrorText, Field, Segmented, Sheet } from '@/components/ui'
 import { useActiveSessionId } from '@/hooks/useSession'
 import { geocode, getCurrentPosition } from '@/lib/geo'
 import { pairedKeychain, keychainSupported } from '@/lib/keychain'
@@ -104,8 +104,8 @@ export function Settings() {
   const themeLabel = { light: 'Light', dark: 'Dark', system: 'System' }[themePref]
 
   return (
-    <Screen className="pb-28">
-      <Header title="Settings" back={sessionId ? true : undefined} />
+    <TabScreen>
+      <Header title="Profile" back={sessionId ? true : undefined} />
 
       {/* Your account */}
       <button
@@ -240,8 +240,7 @@ export function Settings() {
         <p className="mb-3 text-base text-ink-dim">Tether needs location to share where you are, and notifications for alerts.</p>
         <PermissionsCard />
       </Sheet>
-      <BottomNav />
-    </Screen>
+    </TabScreen>
   )
 }
 

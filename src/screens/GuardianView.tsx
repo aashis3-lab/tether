@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { buttonClass } from '@/components/buttons'
 import { PhoneIcon } from '@/components/icons'
+import { PartyWatch } from '@/components/PartyWatch'
 import { ListItem, ListSection, Logo, Spinner, StatusChip } from '@/components/ui'
 import { formatDistance } from '@/lib/geo'
 import { supabase } from '@/lib/supabase'
 import { formatClock } from '@/lib/time'
-import type { AlertLevel } from '@/lib/types'
+import type { AlertLevel, Member, Pin } from '@/lib/types'
 
 interface GuardianData {
   member_name: string
@@ -20,22 +22,43 @@ interface GuardianData {
   nearest: { name: string; phone: string | null; distance_m: number } | null
 }
 
+interface PartyData {
+  party_name: string | null
+  end_time: string
+  alert_member_id: string
+  members: (Pick<Member, 'id' | 'name' | 'status' | 'status_note' | 'lat' | 'lng' | 'battery_level' | 'last_updated'> & {
+    avatar_url: string | null
+    phone: string | null
+  })[]
+  pins: Pick<Pin, 'id' | 'name' | 'lat' | 'lng' | 'radius_m'>[]
+}
+
 const POLL_MS = 5000
 
 /**
- * /guardian/:token, no login. Shows the SMS that would be (or was) sent,
- * then ONE instruction with ONE call button. Polls because anonymous
- * visitors can't use RLS-gated Realtime.
+ * /guardian/:token, no login. Opens in observing mode ("Watching …": the
+ * party's map and people, read-only) with the current instruction and ONE
+ * call button; X shows the alert details (the SMS, who's on it). Polls
+ * because anonymous visitors can't use RLS-gated Realtime.
  */
 export function GuardianView() {
   const { token } = useParams()
   const [data, setData] = useState<GuardianData | null | undefined>(undefined)
+  // The whole party (observing mode). Null when the migration isn't applied yet,
+  // the party ended, or the link is bad; then only the instruction view shows.
+  const [party, setParty] = useState<PartyData | null>(null)
+  const [watching, setWatching] = useState(true)
 
   useEffect(() => {
     let cancelled = false
     const load = async () => {
-      const { data: row } = await supabase.rpc('guardian_view', { p_token: token })
-      if (!cancelled) setData((row as GuardianData | null) ?? null)
+      const [{ data: row }, { data: p }] = await Promise.all([
+        supabase.rpc('guardian_view', { p_token: token }),
+        supabase.rpc('guardian_party_view', { p_token: token }),
+      ])
+      if (cancelled) return
+      setData((row as GuardianData | null) ?? null)
+      setParty((p as PartyData | null) ?? null)
     }
     void load()
     const t = window.setInterval(load, POLL_MS)
@@ -83,6 +106,43 @@ export function GuardianView() {
 
   const levelLabel = data.level === 'emergency' ? 'Emergency' : data.level === 'alert' ? 'Alert' : 'Ping'
 
+  // Observing mode: the party, read-only, with the current instruction at the bottom.
+  if (party && watching) {
+    const members = party.members.map((m) => ({ ...m, session_id: '', user_id: null, guardian_name: null, guardian_phone: null, leaving_with: [], eta: null, is_simulated: false }) as Member)
+    const pins = party.pins.map((p) => ({ ...p, session_id: '' }) as Pin)
+    const avatars = Object.fromEntries(party.members.map((m) => [m.id, m.avatar_url]))
+    const phones = Object.fromEntries(party.members.map((m) => [m.id, m.phone]))
+    return (
+      <PartyWatch
+        partyName={party.party_name ?? `${who}'s party`}
+        endTime={party.end_time}
+        members={members}
+        pins={pins}
+        avatars={avatars}
+        phones={phones}
+        onExit={() => setWatching(false)}
+        exitLabel="Show alert details"
+        bottom={
+          <>
+            <div className="flex items-center gap-2">
+              <StatusChip tone={done ? 'calm' : emergency ? 'alert' : 'checkin'}>{done ? 'Resolved' : levelLabel}</StatusChip>
+              <span className="text-xs text-ink-dim">Guardian view · live</span>
+            </div>
+            <p className={`mt-2 text-xl font-bold leading-snug ${accent}`}>{instruction}</p>
+            {callPhone && callName && (
+              <a href={`tel:${callPhone}`} className={`mt-3 ${buttonClass('safe', true)}`}>
+                <PhoneIcon width={20} height={20} strokeWidth={2} /> Call {callName}
+              </a>
+            )}
+            <button onClick={() => setWatching(false)} className="mt-2 block w-full py-2 text-center text-sm font-semibold text-ink-dim">
+              Alert details and text
+            </button>
+          </>
+        }
+      />
+    )
+  }
+
   return (
     <div className="app-shell px-4 pb-8 pt-[max(0.5rem,env(safe-area-inset-top))]">
       <div className="-mx-1 flex min-h-[56px] items-center gap-2">
@@ -118,6 +178,12 @@ export function GuardianView() {
           />
         )}
       </ListSection>
+
+      {party && (
+        <button onClick={() => setWatching(true)} className={`mt-4 ${buttonClass('secondary')}`}>
+          Watch the party
+        </button>
+      )}
 
       <div className="mt-auto pt-8">
         {callPhone && callName && (

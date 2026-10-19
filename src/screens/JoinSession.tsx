@@ -5,8 +5,8 @@ import { Avatar } from '@/components/Avatar'
 import { GuardianSheet } from '@/components/GuardianSheet'
 import { ChevronRightIcon, QrIcon } from '@/components/icons'
 import { QrScanner } from '@/components/QrScanner'
-import { BottomNav } from '@/components/BottomNav'
-import { Header, ErrorText, Screen, Title, inputClass } from '@/components/ui'
+import { TabScreen } from '@/components/BottomNav'
+import { Header, ErrorText, Title, inputClass } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
 import { firstName, formatCode } from '@/lib/format'
 import { profileContacts } from '@/lib/profile'
@@ -101,7 +101,7 @@ export function JoinSession() {
   const host = preview ? firstName(preview.creator_name) : ''
 
   return (
-    <Screen className="pb-28">
+    <TabScreen>
       <Header title="Join" />
       <Title>Join a party</Title>
 
@@ -209,7 +209,6 @@ export function JoinSession() {
           onClose={() => setScanning(false)}
         />
       )}
-      <BottomNav />
-    </Screen>
+    </TabScreen>
   )
 }

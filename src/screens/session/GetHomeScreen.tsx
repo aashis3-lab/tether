@@ -228,7 +228,7 @@ export function GetHomeScreen() {
             </div>
           ) : (
             <Link
-              to="/settings?edit=home"
+              to="/profile?edit=home"
               className="mt-4 flex items-center gap-3 rounded-2xl border border-dashed border-outline px-4 py-3 text-lg font-medium text-primary-ink"
             >
               <HomeIcon width={20} height={20} /> Add home address
