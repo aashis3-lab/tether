@@ -5,51 +5,71 @@ import 'leaflet/dist/leaflet.css'
 import type { LatLng, Member, Pin } from '@/lib/types'
 import { hasLocation } from '@/lib/geo'
 import { memberStatusLabel } from '@/lib/activities'
+import { useTheme } from '@/lib/theme'
 
-// MapTiler raster tiles in a dark style to match the app theme. {r} becomes
-// "@2x" on high-DPI screens. Without a key, maps show a fallback message.
+// MapTiler raster tiles, Google Maps-like streets in light mode and their
+// dark variant in dark mode. {r} becomes "@2x" on high-DPI screens. Without a
+// key, maps show a fallback message.
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY
-const MAPTILER_STYLE = 'dataviz-dark'
-const TILE_URL = `https://api.maptiler.com/maps/${MAPTILER_STYLE}/256/{z}/{x}/{y}{r}.png?key=${MAPTILER_KEY}`
+const tileUrl = (mode: 'light' | 'dark') =>
+  `https://api.maptiler.com/maps/${mode === 'dark' ? 'streets-v2-dark' : 'streets-v2'}/256/{z}/{x}/{y}{r}.png?key=${MAPTILER_KEY}`
 const TILE_ATTRIB = '&copy; MapTiler &copy; OpenStreetMap contributors'
 
-// Ring colors follow the app's color meanings: green OK, yellow away, red help.
+// Ring colors follow the app's color meanings: green OK, amber away, red help.
 const STATUS_COLOR: Record<string, string> = {
-  together: '#3dd68c',
-  home: '#3dd68c',
-  heading_home: '#ffffff',
-  separated: '#f5c518',
-  left_alone: '#f5c518',
-  needs_help: '#ff4d4d',
+  together: '#34c778',
+  home: '#34c778',
+  heading_home: '#1a73e8',
+  separated: '#f29900',
+  left_alone: '#f29900',
+  needs_help: '#d93025',
 }
 
-const AVATAR_PX = 56
+const AVATAR_PX = 36
 // Width reserved per person when several stand at the same spot.
-const SLOT_PX = 80
+const SLOT_PX = 52
 // After you drag the map yourself, auto-fit waits this long.
 const USER_HOLD_MS = 20_000
 
+const FONT = "'Google Sans','Google Sans Flex',Roboto,Inter,system-ui,sans-serif"
+
 /**
- * Large avatar with "Name · Status" underneath. `dx` shifts it sideways (px)
- * so people standing together sit side by side instead of overlapping.
+ * Small avatar pin with the first name underneath (plus the status when it
+ * isn't "with group"). `dx` shifts it sideways (px) so people standing
+ * together sit side by side. `highlight` adds a pulsing ring (open alert).
  */
-function memberIcon(m: Member, isMe: boolean, avatar: string | null | undefined, label: string, dx: number) {
-  const color = STATUS_COLOR[m.status] ?? '#3dd68c'
+function memberIcon(m: Member, avatar: string | null | undefined, label: string, dx: number, highlight: boolean) {
+  const color = STATUS_COLOR[m.status] ?? STATUS_COLOR.together
   const words = m.name.trim().split(/\s+/)
   const initials = words.slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join('') || '?'
   const inner = avatar ? `<img src="${escapeHtml(avatar)}" style="width:100%;height:100%;object-fit:cover" />` : initials
-  const name = isMe ? 'You' : words[0]
-  const labelColor = color === '#ffffff' ? '#c8c3d3' : color
+  const showStatus = m.status !== 'together'
+  const pulse = highlight
+    ? `<span style="position:absolute;left:50%;top:${AVATAR_PX / 2}px;width:${AVATAR_PX + 8}px;height:${AVATAR_PX + 8}px;margin:-${AVATAR_PX / 2 + 4}px 0 0 -${AVATAR_PX / 2 + 4}px;border-radius:9999px;background:${color};animation:tether-pulse 1.4s ease-out infinite"></span>`
+    : ''
   return L.divIcon({
     className: '',
     iconSize: [0, 0],
     iconAnchor: [0, 0],
     html: `<div style="position:absolute;left:${dx}px;top:0;transform:translate(-50%,-${AVATAR_PX / 2}px);display:flex;flex-direction:column;align-items:center;width:${SLOT_PX}px">
-      <div style="width:${AVATAR_PX}px;height:${AVATAR_PX}px;flex-shrink:0;border-radius:9999px;overflow:hidden;background:linear-gradient(135deg,#ff4f8b,#ff8a3d);border:4px solid ${color};color:#fff;display:flex;align-items:center;justify-content:center;font:800 20px Inter,system-ui,sans-serif;box-shadow:0 3px 10px rgba(0,0,0,.6)">${inner}</div>
-      <div style="margin-top:4px;width:max-content;max-width:${SLOT_PX + 36}px;text-align:center;background:rgba(15,14,17,.94);color:#fff;font:700 13px/1.25 Inter,system-ui,sans-serif;padding:3px 8px;border-radius:8px;border:1px solid ${color}">${escapeHtml(name)} ·<br/><span style="font-weight:600;color:${labelColor}">${escapeHtml(label)}</span></div>
+      ${pulse}
+      <div style="position:relative;width:${AVATAR_PX}px;height:${AVATAR_PX}px;flex-shrink:0;border-radius:9999px;overflow:hidden;background:linear-gradient(135deg,#ff4f8b,#ff8a3d);border:2.5px solid #fff;outline:2.5px solid ${color};color:#fff;display:flex;align-items:center;justify-content:center;font:600 13px ${FONT};box-shadow:0 2px 6px rgba(0,0,0,.35)">${inner}</div>
+      <div style="margin-top:5px;width:max-content;max-width:${SLOT_PX + 48}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;background:rgb(var(--c-surface-lowest) / .95);color:rgb(var(--c-on-surface));font:500 11px/1.3 ${FONT};padding:2px 7px;border-radius:9999px;box-shadow:0 1px 3px rgba(0,0,0,.25)">${escapeHtml(words[0])}${
+        showStatus ? `<span style="color:${color === STATUS_COLOR.together ? 'inherit' : color}"> · ${escapeHtml(label)}</span>` : ''
+      }</div>
     </div>`,
   })
 }
+
+/** Your own spot: a Google Maps-style blue dot with a soft halo. */
+const meIcon = L.divIcon({
+  className: '',
+  iconSize: [0, 0],
+  iconAnchor: [0, 0],
+  html: `<div style="position:absolute;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:9999px;background:rgb(var(--c-me) / .18);display:flex;align-items:center;justify-content:center">
+    <div style="width:18px;height:18px;border-radius:9999px;background:rgb(var(--c-me));border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>
+  </div>`,
+})
 
 type Located = Member & LatLng
 
@@ -66,7 +86,7 @@ function layoutMembers(map: L.Map, ms: Located[]): { m: Located; at: LatLng; dx:
     const c = clusters.find((cl) =>
       cl.some((x) => {
         const q = pt(x)
-        return Math.abs(q.x - p.x) < SLOT_PX * Math.max(1, cl.length) && Math.abs(q.y - p.y) < AVATAR_PX + 40
+        return Math.abs(q.x - p.x) < SLOT_PX * Math.max(1, cl.length) && Math.abs(q.y - p.y) < AVATAR_PX + 24
       })
     )
     if (c) c.push(m)
@@ -85,29 +105,44 @@ function MemberMarkers({
   members,
   myMemberId,
   avatars,
+  highlightIds,
   onMemberClick,
 }: {
   members: Located[]
   myMemberId?: string
   avatars?: Record<string, string | null>
+  highlightIds?: string[]
   onMemberClick?: (memberId: string) => void
 }) {
   const map = useMap()
   const [zoom, setZoom] = useState(() => map.getZoom())
   useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
+  const me = members.find((m) => m.id === myMemberId)
   // `zoom` is read so the layout recomputes when it changes.
-  const placed = zoom != null ? layoutMembers(map, members) : []
+  const placed = zoom != null ? layoutMembers(map, members.filter((m) => m.id !== myMemberId)) : []
   return (
     <>
-      {placed.map(({ m, at, dx }) => (
+      {me && (
         <Marker
-          key={m.id}
-          position={[at.lat, at.lng]}
-          icon={memberIcon(m, m.id === myMemberId, avatars?.[m.id], memberStatusLabel(m), dx)}
-          zIndexOffset={m.status === 'needs_help' ? 3000 : m.id === myMemberId ? 1000 : 0}
-          eventHandlers={onMemberClick ? { click: () => onMemberClick(m.id) } : undefined}
+          key={me.id}
+          position={[me.lat, me.lng]}
+          icon={meIcon}
+          zIndexOffset={500}
+          eventHandlers={onMemberClick ? { click: () => onMemberClick(me.id) } : undefined}
         />
-      ))}
+      )}
+      {placed.map(({ m, at, dx }) => {
+        const hot = highlightIds?.includes(m.id) ?? false
+        return (
+          <Marker
+            key={m.id}
+            position={[at.lat, at.lng]}
+            icon={memberIcon(m, avatars?.[m.id], memberStatusLabel(m), dx, hot)}
+            zIndexOffset={m.status === 'needs_help' || hot ? 3000 : 1000}
+            eventHandlers={onMemberClick ? { click: () => onMemberClick(m.id) } : undefined}
+          />
+        )
+      })}
     </>
   )
 }
@@ -135,16 +170,16 @@ function venuePin(name: string, kind?: string | null) {
   const glyph = KIND_PATH[kind ?? ''] ?? 'M12 9.5a2.5 2.5 0 1 0 0 .01'
   return L.divIcon({
     className: '',
-    iconSize: [36, 46],
-    iconAnchor: [18, 46],
-    html: `<div style="position:relative;width:36px;height:46px">
-      <svg width="36" height="46" viewBox="0 0 36 46" style="filter:drop-shadow(0 3px 6px rgba(0,0,0,.6))">
+    iconSize: [30, 38],
+    iconAnchor: [15, 38],
+    html: `<div style="position:relative;width:30px;height:38px">
+      <svg width="30" height="38" viewBox="0 0 36 46" style="filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">
         <defs><linearGradient id="pg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff4f8b"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient></defs>
-        <path d="M18 45C18 45 3 28.5 3 17.5a15 15 0 0 1 30 0C33 28.5 18 45 18 45Z" fill="url(#pg)" stroke="#0f0e11" stroke-width="1.5"/>
+        <path d="M18 45C18 45 3 28.5 3 17.5a15 15 0 0 1 30 0C33 28.5 18 45 18 45Z" fill="url(#pg)" stroke="#fff" stroke-width="2"/>
         <circle cx="18" cy="17.5" r="11" fill="#fff"/>
         <g transform="translate(9.6 9.1) scale(0.7)" fill="none" stroke="#e8336f" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${glyph}"/></g>
       </svg>
-      <div style="position:absolute;top:48px;left:50%;transform:translateX(-50%);width:max-content;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(15,14,17,.92);color:#fff;font:600 12px Inter,system-ui,sans-serif;padding:3px 8px;border-radius:7px">${escapeHtml(name)}</div>
+      <div style="position:absolute;top:40px;left:50%;transform:translateX(-50%);width:max-content;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:rgb(var(--c-primary-ink));font:600 12px ${FONT};text-shadow:0 0 3px rgb(var(--c-surface-lowest)),0 0 3px rgb(var(--c-surface-lowest)),0 0 2px rgb(var(--c-surface-lowest))">${escapeHtml(name)}</div>
     </div>`,
   })
 }
@@ -155,7 +190,7 @@ function groupChip(n: number) {
     className: '',
     iconSize: [0, 0],
     iconAnchor: [0, 0],
-    html: `<div style="transform:translate(-50%,-50%);width:max-content;white-space:nowrap;background:#ff4f8b;color:#fff;font:700 14px Inter,system-ui,sans-serif;padding:6px 12px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.4)">${n} accounted for</div>`,
+    html: `<div style="transform:translate(-50%,-50%);width:max-content;white-space:nowrap;background:rgb(var(--c-primary));color:#fff;font:500 13px ${FONT};padding:5px 12px;border-radius:9999px;box-shadow:0 2px 6px rgba(0,0,0,.3)">${n} accounted for</div>`,
   })
 }
 
@@ -163,7 +198,7 @@ const homeIcon = L.divIcon({
   className: '',
   iconSize: [28, 28],
   iconAnchor: [14, 14],
-  html: '<div style="font-size:24px;line-height:28px">🏠</div>',
+  html: `<div style="width:28px;height:28px;border-radius:9999px;background:rgb(var(--c-surface-lowest));color:rgb(var(--c-primary-ink));display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.35)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1v-9.5Z"/></svg></div>`,
 })
 
 /**
@@ -330,6 +365,7 @@ export function MapView({
   onPinClick,
   onReady,
   avatars,
+  highlightIds,
 }: {
   members?: Member[]
   pins?: (Pick<Pin, 'name' | 'lat' | 'lng' | 'radius_m'> & { id?: string; kind?: Pin['kind'] })[]
@@ -358,7 +394,10 @@ export function MapView({
   onReady?: (m: L.Map) => void
   /** member id -> picture URL for markers. */
   avatars?: Record<string, string | null>
+  /** Members to draw with a pulsing ring (e.g. an open separation alert). */
+  highlightIds?: string[]
 }) {
+  const { mode } = useTheme()
   const located = members.filter(hasLocation)
   const fitPoints: LatLng[] = [...located, ...pins]
   if (fitPoints.length === 0 && center) fitPoints.push(center)
@@ -376,13 +415,13 @@ export function MapView({
       scrollWheelZoom={interactive}
       doubleClickZoom={interactive}
       className={`h-full w-full ${className}`}
-      style={{ background: '#0f0e11' }}
+      style={{ background: 'rgb(var(--c-surface-high))' }}
     >
       {MAPTILER_KEY ? (
-        <TileLayer url={TILE_URL} attribution={TILE_ATTRIB} />
+        <TileLayer key={mode} url={tileUrl(mode)} attribution={TILE_ATTRIB} />
       ) : (
         <div className="pointer-events-none absolute inset-0 z-[450] flex items-center justify-center p-4 text-center">
-          <p className="rounded-xl2 bg-black/70 px-4 py-3 text-base text-ink-dim">
+          <p className="rounded-xl bg-surface-lowest/90 px-4 py-3 text-base text-ink-dim shadow-e1">
             {import.meta.env.DEV ? (
               <>
                 Map unavailable: add <span className="font-mono text-ink">VITE_MAPTILER_KEY</span> to .env and restart the
@@ -405,7 +444,7 @@ export function MapView({
           <Circle
             center={[p.lat, p.lng]}
             radius={p.radius_m}
-            pathOptions={{ color: '#ff8a3d', weight: 1, opacity: 0.3, fillOpacity: 0.04 }}
+            pathOptions={{ color: '#ff4f8b', weight: 1, opacity: 0.35, fillOpacity: 0.06 }}
           />
           <Marker
             position={[p.lat, p.lng]}
@@ -431,6 +470,7 @@ export function MapView({
         )}
         myMemberId={myMemberId}
         avatars={avatars}
+        highlightIds={highlightIds}
         onMemberClick={onMemberClick}
       />
     </MapContainer>

@@ -62,20 +62,20 @@ export function SchemaCheck() {
 
   if (!import.meta.env.DEV || missing.length === 0) return null
   return (
-    <div className="fixed inset-0 z-[6000] flex justify-center bg-bg/95 backdrop-blur">
+    <div className="fixed inset-0 z-[6000] flex justify-center bg-surface/95 backdrop-blur">
       <div className="flex w-full max-w-app flex-col justify-center px-6">
-        <p className="text-sm font-bold uppercase tracking-wide text-status-checkin">Database out of date</p>
-        <h1 className="mt-2 text-3xl font-bold">Run {missing.length === 1 ? 'this migration' : 'these migrations'}</h1>
+        <p className="text-xs font-medium uppercase tracking-wider text-status-checkin">Database out of date</p>
+        <h1 className="mt-2 text-2xl font-medium">Run {missing.length === 1 ? 'this migration' : 'these migrations'}</h1>
         <p className="mt-2 text-ink-dim">
           Supabase dashboard, SQL Editor: paste each file from <span className="font-mono">supabase/migrations/</span> and run
           it, in this order. Then reload.
         </p>
-        <ol className="mt-4 flex list-decimal flex-col gap-2 rounded-2xl bg-bg-card py-4 pl-10 pr-4 font-mono text-sm">
+        <ol className="mt-4 flex list-decimal flex-col gap-2 rounded-2xl bg-surface-high/70 py-4 pl-10 pr-4 font-mono text-sm">
           {missing.map((m) => (
             <li key={m}>{m}</li>
           ))}
         </ol>
-        <button onClick={() => window.location.reload()} className="mt-6 min-h-tap rounded-2xl bg-accent-pink text-lg font-bold text-white">
+        <button onClick={() => window.location.reload()} className="mt-6 min-h-tap rounded-2xl bg-accent-pink text-lg font-medium text-white">
           I ran it, reload
         </button>
       </div>

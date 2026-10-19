@@ -128,21 +128,21 @@ export function ProfileForm({
             id="home-address"
           />
           {askedHome && !initial && !homeAddress.trim() && (
-            <div className="mt-3 rounded-xl2 border-2 border-white/30 p-4" role="alert">
-              <p className="text-lg font-bold">Add your home address?</p>
+            <div className="mt-3 rounded-xl border border-outline p-4" role="alert">
+              <p className="text-lg font-medium">Add your home address?</p>
               <p className="text-base text-ink-dim">It gives you one-tap directions home. Optional.</p>
               <div className="mt-3 grid grid-cols-2 gap-3">
-                <button type="button" onClick={() => document.getElementById('home-address')?.focus()} className="min-h-tap rounded-xl2 bg-white text-lg font-bold text-black">
+                <button type="button" onClick={() => document.getElementById('home-address')?.focus()} className="min-h-tap rounded-full bg-primary text-base font-medium text-primary-on">
                   Add it
                 </button>
-                <button type="submit" className="min-h-tap rounded-xl2 border-2 border-white/40 text-lg font-bold">
+                <button type="submit" className="min-h-tap rounded-full border border-outline text-base font-medium text-primary-ink">
                   Skip
                 </button>
               </div>
             </div>
           )}
           {(geocodeFailed || home) && (
-            <button type="button" onClick={useHere} disabled={locating} className="mt-1 min-h-[44px] text-sm font-semibold text-accent-pink">
+            <button type="button" onClick={useHere} disabled={locating} className="mt-1 min-h-[44px] text-sm font-semibold text-primary-ink">
               {locating ? 'Finding you…' : home ? '✓ Location saved' : "Use where I am right now instead"}
             </button>
           )}
@@ -151,7 +151,7 @@ export function ProfileForm({
 
       <div className="mt-8 flex flex-col gap-3">
         {contacts.map((c, i) => (
-          <div key={i} className="rounded-xl2 border border-danger-line bg-bg-card px-4 pb-2 pt-3">
+          <div key={i} className="rounded-xl border border-danger-line bg-surface-high/70 px-4 pb-2 pt-3">
             <div className="flex items-center justify-between">
               <p className="font-semibold">Emergency Contact{i > 0 ? ` ${i + 1}` : ''}</p>
               {i > 0 && (
@@ -188,7 +188,7 @@ export function ProfileForm({
 
       <button
         type="button"
-        className="mt-3 flex min-h-[48px] items-center gap-2 self-start font-semibold text-ink underline underline-offset-4"
+        className="mt-3 flex min-h-tap items-center gap-2 self-start rounded-full px-2 text-sm font-medium text-primary-ink"
         onClick={() => setContacts((cs) => [...cs, { ...emptyContact }])}
       >
         <PlusIcon width={18} height={18} />

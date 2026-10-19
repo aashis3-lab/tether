@@ -28,19 +28,19 @@ export function AlertOverlay({
     return playAlertLoop()
   }, [sound])
 
-  const bg = tone === 'alert' ? 'bg-status-alert' : tone === 'findMe' ? 'bg-findme' : 'bg-status-checkin'
+  const bg = tone === 'alert' ? 'bg-danger text-white' : tone === 'findMe' ? 'bg-findme text-black' : 'bg-secondary text-black'
   return (
-    <div className={`fixed inset-0 z-[2000] flex justify-center ${bg}`}>
-      <div className="flex w-full max-w-app flex-col px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(3rem,env(safe-area-inset-top))] text-black">
+    <div className={`fixed inset-0 z-[2000] flex animate-fade-in justify-center ${bg}`}>
+      <div className="flex w-full max-w-app flex-col px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(3rem,env(safe-area-inset-top))]">
         <div className="flex-1">
-          <div className="mb-6 h-16 w-16 animate-pulse rounded-full bg-black/20" />
-          <h1 className="text-4xl font-extrabold leading-tight">{title}</h1>
-          {body && <div className="mt-4 text-xl font-medium">{body}</div>}
+          <div className="mb-6 h-14 w-14 animate-pulse rounded-full bg-current opacity-20" />
+          <h1 className="text-4xl font-semibold leading-tight tracking-tight">{title}</h1>
+          {body && <div className="mt-4 text-lg">{body}</div>}
         </div>
         {footer}
         <button
           onClick={onAction}
-          className="mt-4 min-h-[88px] w-full rounded-3xl bg-black text-2xl font-bold text-white active:scale-[0.98]"
+          className="mt-4 min-h-[64px] w-full rounded-full bg-black text-xl font-medium text-white shadow-e2 active:scale-[0.98]"
         >
           {actionLabel}
         </button>

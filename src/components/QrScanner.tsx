@@ -74,7 +74,7 @@ export function QrScanner({ onCode, onClose }: { onCode: (code: string) => void;
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div className="h-64 w-64 rounded-3xl border-4 border-white/80" />
         </div>
-        <p className="absolute inset-x-0 bottom-[max(3rem,env(safe-area-inset-bottom))] px-6 text-center text-lg font-semibold">
+        <p className="absolute inset-x-0 bottom-[max(3rem,env(safe-area-inset-bottom))] px-6 text-center text-lg font-medium">
           {error || 'Point at the QR code on your friend’s phone'}
         </p>
         <button

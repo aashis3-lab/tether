@@ -91,8 +91,8 @@ export function NightEndsCalendar({ value, onChange }: { value?: Date; onChange:
   ].filter((q): q is [string, Date] => q !== null && hoursAway(q[1]) > 0 && hoursAway(q[1]) < 24)
 
   return (
-    <div className="rounded-2xl bg-bg-card p-4">
-      <p className="mb-3 inline-block rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-ink-dim">
+    <div className="rounded-2xl bg-surface-lowest p-4 dark:bg-surface-mid">
+      <p className="mb-3 text-xs font-medium text-ink-dim">
         Now: {now.toLocaleDateString([], { weekday: 'short' })} {now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
       </p>
 
@@ -106,14 +106,14 @@ export function NightEndsCalendar({ value, onChange }: { value?: Date; onChange:
               onClick={() => setDay(d)}
               className={`flex min-w-[64px] shrink-0 flex-col items-center rounded-2xl border px-2 py-2 transition active:scale-95 ${
                 selected
-                  ? 'border-accent-pink bg-accent-pink text-white'
+                  ? 'border-transparent bg-primary text-primary-on'
                   : i === 0
-                    ? 'border-accent-pink/60 bg-accent-pink/10'
-                    : 'border-white/10 bg-bg'
+                    ? 'border-primary/50 text-primary-ink'
+                    : 'border-outline-variant'
               }`}
             >
-              <span className="text-xs font-bold uppercase">{i === 0 ? 'Today' : i === 1 ? 'Tmrw' : d.toLocaleDateString([], { weekday: 'short' })}</span>
-              <span className="text-lg font-bold">{d.getDate()}</span>
+              <span className="text-xs font-medium">{i === 0 ? 'Today' : i === 1 ? 'Tmrw' : d.toLocaleDateString([], { weekday: 'short' })}</span>
+              <span className="text-xl font-medium">{d.getDate()}</span>
             </button>
           )
         })}
@@ -122,7 +122,7 @@ export function NightEndsCalendar({ value, onChange }: { value?: Date; onChange:
       {/* Time wheels */}
       <div className="relative mt-4 flex justify-center gap-2">
         <div
-          className="pointer-events-none absolute inset-x-0 rounded-xl bg-white/10"
+          className="pointer-events-none absolute inset-x-0 rounded-xl bg-secondary-container/70"
           style={{ top: ITEM_H * Math.floor(VISIBLE / 2), height: ITEM_H }}
         />
         <Wheel items={HOURS.map(String)} index={HOURS.indexOf(hour)} onIndex={(i) => setHour(HOURS[i])} />
@@ -136,8 +136,8 @@ export function NightEndsCalendar({ value, onChange }: { value?: Date; onChange:
           <button
             key={label}
             onClick={() => setFrom(d)}
-            className={`min-h-[40px] rounded-full border px-4 text-sm font-semibold transition active:scale-95 ${
-              d.getTime() === chosen.getTime() ? 'border-accent-pink bg-accent-pink/15 text-accent-pink' : 'border-white/15'
+            className={`h-8 rounded-lg border px-3 text-sm font-medium transition active:scale-95 ${
+              d.getTime() === chosen.getTime() ? 'border-transparent bg-secondary-container text-secondary-on-container' : 'border-outline-variant text-ink-dim'
             }`}
           >
             {label}
@@ -179,7 +179,7 @@ function Wheel({ items, index, onIndex }: { items: string[]; index: number; onIn
           key={it}
           onClick={() => onIndex(i)}
           className={`flex w-full snap-center items-center justify-center text-2xl tabular-nums transition ${
-            i === index ? 'font-bold text-ink' : 'text-ink-faint'
+            i === index ? 'font-medium text-ink' : 'text-ink-faint'
           }`}
           style={{ height: ITEM_H }}
         >

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Logo, Spinner } from '@/components/ui'
+import { PhoneIcon } from '@/components/icons'
+import { ListItem, ListSection, Logo, Spinner, StatusChip } from '@/components/ui'
 import { formatDistance } from '@/lib/geo'
 import { supabase } from '@/lib/supabase'
 import { formatClock } from '@/lib/time'
@@ -49,7 +50,7 @@ export function GuardianView() {
     return (
       <div className="app-shell items-center justify-center px-6 text-center">
         <Logo />
-        <p className="mt-6 text-xl">This link is invalid or has expired.</p>
+        <p className="mt-6 text-lg">This link is invalid or has expired.</p>
       </div>
     )
   }
@@ -80,33 +81,55 @@ export function GuardianView() {
   const emergency = data.level === 'emergency' && !done
   const accent = done ? 'text-status-calm' : 'text-status-alert'
 
+  const levelLabel = data.level === 'emergency' ? 'Emergency' : data.level === 'alert' ? 'Alert' : 'Ping'
+
   return (
-    <div className="app-shell px-5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))]">
-      <Logo />
-      <p className="mt-2 text-ink-dim">Guardian view{data.guardian_name ? ` for ${data.guardian_name}` : ''}</p>
+    <div className="app-shell px-4 pb-8 pt-[max(0.5rem,env(safe-area-inset-top))]">
+      <div className="-mx-1 flex min-h-[56px] items-center gap-2">
+        <Logo />
+        <span className="ml-auto text-xs text-ink-dim">Guardian view{data.guardian_name ? ` · ${data.guardian_name}` : ''}</span>
+      </div>
 
       {/* The SMS as it would arrive. */}
-      <div className="mt-6">
-        <p className="mb-1 text-center text-sm text-ink-faint">Text Message · {formatClock(data.created_at)}</p>
-        <div className="max-w-[85%] rounded-3xl rounded-bl-md bg-bg-card px-4 py-3 text-base leading-snug">{data.message}</div>
+      <div className="mt-3">
+        <p className="mb-1.5 text-center text-xs text-ink-faint">Text message · {formatClock(data.created_at)}</p>
+        <div className="max-w-[85%] rounded-[20px] rounded-bl-md bg-surface-high px-4 py-3 text-base leading-snug">{data.message}</div>
       </div>
 
-      <div className="flex flex-1 flex-col justify-center py-10">
-        {emergency && (
-          <p className="mb-3 self-start rounded-full bg-status-alert px-3 py-1 text-sm font-bold uppercase text-white">Emergency</p>
+      {/* The one instruction. */}
+      <div className={`mt-6 rounded-[20px] p-5 ${done ? 'bg-status-calm/10' : emergency ? 'bg-danger/10' : 'bg-primary-container/60'}`}>
+        <div className="mb-2 flex items-center gap-2">
+          <StatusChip tone={done ? 'calm' : emergency ? 'alert' : 'checkin'}>{done ? 'Resolved' : levelLabel}</StatusChip>
+          {!done && <span className="text-xs text-ink-dim">Updates every few seconds</span>}
+        </div>
+        <h1 className={`text-3xl font-normal leading-tight tracking-tight ${accent}`}>{instruction}</h1>
+      </div>
+
+      <ListSection title="Details">
+        <ListItem headline={who} supporting={`Sent this ${levelLabel.toLowerCase()} at ${formatClock(data.created_at)}`} />
+        <ListItem
+          headline={data.claimed_by_name ? `${data.claimed_by_name} is on it` : done ? 'No one needed' : 'No friend has answered yet'}
+          supporting="Friends tap “I'm on it” in Tether when they head over"
+        />
+        {nearest && (
+          <ListItem
+            headline={`Nearest friend: ${nearest.name}`}
+            supporting={`${formatDistance(nearest.distance_m)} from ${who}${nearest.phone ? ` · ${nearest.phone}` : ''}`}
+          />
         )}
-        <h1 className={`text-4xl font-extrabold leading-tight ${accent}`}>{instruction}</h1>
-      </div>
+      </ListSection>
 
-      {callPhone && callName && (
-        <a
-          href={`tel:${callPhone}`}
-          className="flex min-h-[88px] items-center justify-center rounded-3xl bg-status-calm text-2xl font-extrabold text-black active:scale-[0.98]"
-        >
-          📞 Call {callName}
-        </a>
-      )}
-      {callPhone && <p className="mt-2 text-center text-ink-dim">{callPhone}</p>}
+      <div className="mt-auto pt-8">
+        {callPhone && callName && (
+          <a
+            href={`tel:${callPhone}`}
+            className="flex min-h-[64px] items-center justify-center gap-3 rounded-full bg-safe text-xl font-medium text-black shadow-e1 active:scale-[0.98]"
+          >
+            <PhoneIcon width={22} height={22} strokeWidth={2} /> Call {callName}
+          </a>
+        )}
+        {callPhone && <p className="mt-2 text-center text-xs text-ink-dim">{callPhone}</p>}
+      </div>
     </div>
   )
 }

@@ -19,12 +19,12 @@ export function InviteCard({ code }: { code: string }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl2 bg-bg-card">
+    <div className="overflow-hidden rounded-[20px] bg-surface-lowest shadow-e1 dark:bg-surface-mid">
       <div className="h-1 bg-brand" />
       <div className="p-5">
-        <p className="text-xs font-bold uppercase tracking-wide text-ink-dim">Invite friends</p>
-        <p className="mt-2 text-4xl font-extrabold tracking-wide">{formatCode(code)}</p>
-        <p className="mt-2 break-all text-base text-ink-dim">{link.replace(/^https?:\/\//, '')}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-dim">Invite friends</p>
+        <p className="mt-1 text-4xl font-medium tracking-widest text-primary-ink">{formatCode(code)}</p>
+        <p className="mt-1 break-all text-xs text-ink-dim">{link.replace(/^https?:\/\//, '')}</p>
         {import.meta.env.DEV && inviteLinkIsLocalOnly() && (
           <p className="mt-2 rounded-lg bg-status-checkin/15 p-2 text-sm text-status-checkin">
             This link points at localhost, so it only works on this computer. Friends can still type the code if they open
@@ -34,7 +34,7 @@ export function InviteCard({ code }: { code: string }) {
         )}
         <button
           onClick={share}
-          className="mt-4 min-h-[52px] w-full rounded-xl2 bg-white/10 font-semibold active:scale-[0.98]"
+          className="mt-4 min-h-tap w-full rounded-full bg-secondary-container font-medium text-secondary-on-container active:scale-[0.98]"
         >
           {copied ? '✓ Link copied' : canShare ? 'Share link' : 'Copy link'}
         </button>

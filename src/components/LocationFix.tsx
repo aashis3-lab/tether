@@ -15,7 +15,7 @@ export function LocationFix({ status, onRetry }: { status: GpsStatus; onRetry: (
   if (status === 'ok' || status === 'starting') return null
 
   if (status === 'searching') {
-    return <p className="mt-3 text-ink-dim">Looking for GPS signal…</p>
+    return <p className="mt-3 text-xs text-ink-dim">Looking for GPS signal…</p>
   }
 
   const title =
@@ -42,15 +42,15 @@ export function LocationFix({ status, onRetry }: { status: GpsStatus; onRetry: (
     <>
       <button
         onClick={() => setOpen(true)}
-        className="mt-3 flex min-h-tap w-full items-center justify-between gap-3 rounded-xl2 border border-status-checkin/60 bg-status-checkin/10 px-4 text-left font-semibold text-status-checkin"
+        className="mt-3 flex min-h-tap w-full items-center justify-between gap-3 rounded-xl bg-status-checkin/10 px-4 text-left text-base font-medium text-status-checkin"
       >
         <span>{title}</span>
-        {status === 'denied' && <span className="shrink-0 underline">Fix</span>}
+        {status === 'denied' && <span className="shrink-0 rounded-full bg-status-checkin/15 px-3 py-1 text-sm">Fix</span>}
       </button>
 
       <Sheet open={open} onClose={() => setOpen(false)} title="Turn on location">
         {status === 'insecure' ? (
-          <p className="text-lg text-ink-dim">
+          <p className="text-base text-ink-dim">
             Browsers only share location over https. Open Tether from its https address
             {import.meta.env.DEV && (
               <>
