@@ -91,7 +91,7 @@ export function JoinSession() {
           onChange={(e) => setCode(normalize(e.target.value))}
           autoCapitalize="characters"
           autoComplete="off"
-          placeholder="TG 4826"
+          placeholder="K7M 4QX"
           className={`${inputClass} text-xl font-semibold tracking-wide`}
           autoFocus={!codeParam}
         />

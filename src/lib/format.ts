@@ -1,6 +1,7 @@
-/** "TG4826" -> "TG 4826" (older 6-char codes pass through). */
+/** "K7MQ4X" -> "K7M 4QX"; old "TG4826" codes -> "TG 4826". Partial input passes through. */
 export function formatCode(code: string) {
-  return /^TG\d{4}$/.test(code) ? `${code.slice(0, 2)} ${code.slice(2)}` : code
+  if (/^TG\d{4}$/.test(code)) return `${code.slice(0, 2)} ${code.slice(2)}`
+  return code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code
 }
 
 /** First word of a name: "Maya Chen" -> "Maya". */

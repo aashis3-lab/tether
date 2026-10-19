@@ -58,6 +58,29 @@ order**:
 9. `20260109000000_sms_names_cleanup.sql`: party names, venue types on pins, the SMS outbox and
    short guardian links (`/g/<code>`), `help_pressed` and `queue_test_sms`; removes the simulated
    member insert policy (then redeploy `evaluate-session`)
+10. `20260110000000_security_hardening.sql`: unguessable join codes (6 random characters),
+    peers see only name, avatar and (during a party) phone via `peer_profiles`, members write
+    only their own row, alerts and check-ins change only through RPCs, raise/answer only for
+    yourself, server-side guardian link base URL and demo speed, test-text rate limit
+    (then follow **Security settings** below)
+
+### Security settings
+
+Add these in **SQL editor** after migration 10 (both are optional but recommended):
+
+```sql
+-- The only address used in guardian text links. Without it the app's own address is
+-- trusted, which lets a modified client put any link in a text to a guardian.
+select vault.create_secret('https://<your-app>.vercel.app', 'tether_app_url');
+
+-- Demo speed for escalation run from the app (when evaluate-session isn't deployed).
+-- The Edge Function keeps using its own DEMO_SPEED secret. Default 1.
+select vault.create_secret('60', 'tether_demo_speed');
+```
+
+Also check **Authentication → Providers → Anonymous sign-ins** is **off** in any project real
+people use: when it is on, anyone can skip SMS verification by calling the API directly,
+whatever `VITE_AUTH_MODE` says.
 
 The app checks this on startup: if a migration is missing it shows exactly which file to run.
 

@@ -31,6 +31,7 @@ const PROBES: Probe[] = [
     label: 'help_pressed',
     run: (db) => db.rpc('help_pressed', { p_member_id: '00000000-0000-0000-0000-000000000000', p_base_url: '' }),
   },
+  { migration: '20260110000000_security_hardening.sql', label: 'peer_profiles', run: (db) => db.rpc('peer_profiles', { p_user_ids: [] }) },
 ]
 
 /** Developer aid: only runs in dev builds, never shown to real users. */

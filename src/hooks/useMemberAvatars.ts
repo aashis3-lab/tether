@@ -4,7 +4,7 @@ import type { Member } from '@/lib/types'
 
 /**
  * member id -> profile picture URL and phone, for everyone in the party.
- * Peers' profiles are readable by RLS (profiles_select_session_peers).
+ * Read through peer_profiles(): name/avatar, plus phone during an active party.
  * Re-fetches when someone joins.
  */
 export function useMemberProfiles(members: Member[]): {
@@ -18,9 +18,7 @@ export function useMemberProfiles(members: Member[]): {
   useEffect(() => {
     if (!key) return
     void supabase
-      .from('profiles')
-      .select('id, avatar_url, phone')
-      .in('id', key.split(','))
+      .rpc('peer_profiles', { p_user_ids: key.split(',') })
       .then(({ data }) => {
         const map: Record<string, { avatar: string | null; phone: string | null }> = {}
         for (const r of (data ?? []) as { id: string; avatar_url: string | null; phone: string | null }[]) {

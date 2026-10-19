@@ -67,7 +67,7 @@ export async function loadHistory(userId: string, limit = 30): Promise<PastParty
 
   const userIds = [...new Set(members.map((m) => m.user_id).filter(Boolean))] as string[]
   const { data: profiles } = userIds.length
-    ? await supabase.from('profiles').select('id, avatar_url').in('id', userIds)
+    ? await supabase.rpc('peer_profiles', { p_user_ids: userIds })
     : { data: [] }
   const avatar = new Map(((profiles ?? []) as { id: string; avatar_url: string | null }[]).map((p) => [p.id, p.avatar_url]))
 
