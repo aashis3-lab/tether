@@ -3,25 +3,26 @@ import type L from 'leaflet'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { AddPlaceSheet } from '@/components/AddPlaceSheet'
-import { AlertTriangleIcon, CrosshairIcon, GearIcon, HomeIcon, PinIcon, PlusIcon, SendIcon, ShieldIcon, UserCheckIcon, UsersIcon } from '@/components/icons'
+import { AlertTriangleIcon, CrosshairIcon, GearIcon, MoonIcon, PinIcon, SendIcon, UserCheckIcon, UsersIcon } from '@/components/icons'
 import { IncomingAlerts } from '@/components/IncomingAlerts'
 import { LocationFix } from '@/components/LocationFix'
 import { MapView } from '@/components/MapView'
 import { MemberCard } from '@/components/MemberCard'
+import { PartyWatch } from '@/components/PartyWatch'
 import { PeoplePanel } from '@/components/PeoplePanel'
 import { PinSheet } from '@/components/PinSheet'
-import { Button, ErrorText, Field, ListItem, Sheet } from '@/components/ui'
+import { Button, ErrorText, Field, Sheet } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
-import { WalletSheet } from '@/components/WalletSheet'
 import { claimerName, raiseAlert } from '@/lib/alerts'
 import { firstName } from '@/lib/format'
 import { placeName, reverseGeocode } from '@/lib/geo'
 import { LOCATION_OFF } from '@/lib/status'
 import { supabase } from '@/lib/supabase'
 import { toast, tryOrToast } from '@/lib/toast'
-import { formatClock } from '@/lib/time'
 import { withViewTransition } from '@/lib/transition'
 import type { LatLng } from '@/lib/types'
+import { useElementHeight } from '@/hooks/useElementHeight'
+import { useSwipe } from '@/hooks/useSwipe'
 import { useSessionCtx } from './session/context'
 
 /**
@@ -46,8 +47,8 @@ function PartyView() {
   const { session, members, pins, alerts, checkIns, me, profile, myPos, gpsStatus, retryGps, avatars, phones } = useSessionCtx()
   const [cardId, setCardId] = useState<string | null>(null)
   const cardMember = members.find((m) => m.id === cardId) ?? null
-  const [wallet, setWallet] = useState(false)
-  const [menu, setMenu] = useState(false)
+  const [bigPanel, setBigPanel] = useState(false)
+  const panelSwipe = useSwipe({ onTap: () => setBigPanel((b) => !b), onUp: () => setBigPanel(true), onDown: () => setBigPanel(false) })
   const [recenter, setRecenter] = useState(0)
   const [addOpen, setAddOpen] = useState(false)
   const [picking, setPicking] = useState(false)
@@ -55,8 +56,8 @@ function PartyView() {
   const mapRef = useRef<L.Map | null>(null)
   const topRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
-  const topH = useHeight(topRef, picking)
-  const bottomH = useHeight(bottomRef, picking)
+  const topH = useElementHeight(topRef, picking)
+  const bottomH = useElementHeight(bottomRef, picking)
   const onReady = useCallback((m: L.Map) => {
     mapRef.current = m
   }, [])
@@ -74,7 +75,6 @@ function PartyView() {
 
   function startPicking(at?: LatLng) {
     setAddOpen(false)
-    setMenu(false)
     setPicking(true)
     if (at) mapRef.current?.panTo([at.lat, at.lng])
   }
@@ -159,6 +159,11 @@ function PartyView() {
                 myPos={myPos}
                 onInvite={() => navigate(`${base}/invite`)}
                 onMember={openMember}
+                footer={
+                  <button onClick={() => setAddOpen(true)} className="flex h-10 items-center gap-2 rounded-full px-1 text-sm font-semibold text-primary-ink">
+                    <PinIcon width={18} height={18} /> Add a place
+                  </button>
+                }
               />
               <div className="pointer-events-auto mt-2">
                 <IncomingAlerts alerts={alerts} members={members} me={me} userId={userId} position={myPos} mode="banners" />
@@ -180,11 +185,19 @@ function PartyView() {
             </div>
           </div>
 
-          {/* Bottom: the safety panel, then a slim bar. */}
+          {/* Bottom: the safety panel (tap or swipe the handle to make it bigger), then a slim bar. */}
           <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[900] flex justify-center">
-            <div ref={bottomRef} className="pointer-events-auto w-full max-w-app rounded-t-[28px] bg-surface-low shadow-[0_-2px_12px_rgb(0_0_0/0.12)]">
-              <div className="px-3 pt-3">
-                <div className="-mt-3 mb-2 empty:hidden">
+            <div ref={bottomRef} className="pointer-events-auto relative z-10 w-full max-w-app rounded-t-[28px] bg-surface-low shadow-[0_-2px_12px_rgb(0_0_0/0.12)]">
+              <button
+                {...panelSwipe}
+                aria-label={bigPanel ? 'Make the safety buttons smaller' : 'Make the safety buttons bigger'}
+                aria-expanded={bigPanel}
+                className="flex h-6 w-full items-center justify-center"
+              >
+                <span className="h-1 w-10 rounded-full bg-outline/50" />
+              </button>
+              <div className="px-3">
+                <div className="mb-2 empty:hidden">
                   <LocationFix status={gpsStatus} onRetry={retryGps} />
                 </div>
                 {myAlert && (
@@ -207,45 +220,43 @@ function PartyView() {
                 <div className="grid grid-cols-[1fr_1.2fr_1fr] items-end gap-2">
                   <SafetyButton
                     label="Find me"
-                    icon={<SendIcon width={28} height={28} strokeWidth={2.25} />}
+                    icon={<SendIcon width={bigPanel ? 34 : 28} height={bigPanel ? 34 : 28} strokeWidth={2.25} />}
                     className="bg-findme text-black"
                     disabled={findBusy}
+                    size={bigPanel ? 'xl' : 'md'}
                     onClick={() => void findMe()}
                   />
                   <SafetyButton
                     label="HELP"
-                    icon={<AlertTriangleIcon width={30} height={30} strokeWidth={2.25} />}
+                    icon={<AlertTriangleIcon width={bigPanel ? 38 : 30} height={bigPanel ? 38 : 30} strokeWidth={2.25} />}
                     className="bg-danger text-white shadow-e3"
-                    big
+                    size={bigPanel ? 'xxl' : 'lg'}
                     onClick={() => navigate(`${base}/help`)}
                   />
                   <SafetyButton
                     label="Status"
-                    icon={<UserCheckIcon width={28} height={28} strokeWidth={2.25} />}
+                    icon={<UserCheckIcon width={bigPanel ? 34 : 28} height={bigPanel ? 34 : 28} strokeWidth={2.25} />}
                     className="bg-[#1a73e8] text-white"
+                    size={bigPanel ? 'xl' : 'md'}
                     onClick={() => navigate(`${base}/update`)}
                   />
                 </div>
+                {/* End my night: always here, muted (not red, not pink). */}
+                <button
+                  onClick={() => navigate(`${base}/home`)}
+                  className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-surface-highest text-base font-bold text-ink-dim active:scale-[0.99]"
+                >
+                  <MoonIcon width={18} height={18} /> End my night
+                </button>
               </div>
-              <nav aria-label="Party" className="mt-2 grid grid-cols-3 border-t border-line/70 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1">
-                <BarButton label="Settings" icon={<GearIcon width={22} height={22} />} onClick={() => navigate('/settings')} />
+              <nav aria-label="Party" className="mt-2 grid grid-cols-2 border-t border-line/70 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1">
+                <BarButton label="Profile" icon={<GearIcon width={22} height={22} />} onClick={() => navigate('/profile')} />
                 <BarButton label="Invite" icon={<UsersIcon width={22} height={22} />} onClick={() => navigate(`${base}/invite`)} />
-                <BarButton label="Party" icon={<MenuIcon />} onClick={() => setMenu(true)} />
               </nav>
             </div>
           </div>
         </>
       )}
-
-      <Sheet open={menu} onClose={() => setMenu(false)} title={partyName}>
-        <div className="-mx-4 divide-y divide-line/70">
-          <ListItem leading={<ShieldIcon width={20} height={20} className="text-primary-ink" />} headline="Safety card" onClick={() => { setMenu(false); setWallet(true) }} />
-          <ListItem leading={<PlusIcon width={20} height={20} className="text-primary-ink" />} headline="Add a location" onClick={() => { setMenu(false); setAddOpen(true) }} />
-          <ListItem leading={<UsersIcon width={20} height={20} className="text-primary-ink" />} headline="Invite friends" onClick={() => navigate(`${base}/invite`)} />
-          <ListItem leading={<HomeIcon width={20} height={20} className="text-primary-ink" />} headline="End my night" onClick={() => navigate(`${base}/home`)} />
-        </div>
-        <p className="mt-3 text-center text-xs text-ink-faint">Party ends {formatClock(session.end_time)}</p>
-      </Sheet>
 
       {addOpen && (
         <AddPlaceSheet
@@ -281,7 +292,6 @@ function PartyView() {
         </button>
       </Sheet>
 
-      <WalletSheet open={wallet} onClose={() => setWallet(false)} profile={profile} me={me} />
     </>
   )
 }
@@ -292,76 +302,33 @@ function PartyView() {
  */
 function ObservingView() {
   const navigate = useNavigate()
-  const { session, members, pins, checkIns, me, avatars, phones } = useSessionCtx()
-  const [cardId, setCardId] = useState<string | null>(null)
-  const cardMember = members.find((m) => m.id === cardId) ?? null
-  const topRef = useRef<HTMLDivElement>(null)
-  const topH = useHeight(topRef, false)
-  const partyName = session.name ?? pins[0]?.name ?? 'the party'
+  const { session, members, pins, me, avatars, phones } = useSessionCtx()
   const stillOut = members.filter((m) => m.status !== 'home').length
-
+  const leave = () => navigate('/', { replace: true })
   return (
-    <>
-      <div className="fixed inset-0 z-0 flex justify-center bg-surface">
-        <div className="relative isolate h-full w-full max-w-app">
-          <MapView members={members} pins={pins} myMemberId={me?.id} fitMode="auto" topPad={topH} bottomPad={96} onMemberClick={setCardId} avatars={avatars} />
-        </div>
-      </div>
-
-      <div className="pointer-events-none fixed inset-x-0 top-0 z-[800] flex justify-center">
-        <div ref={topRef} className="w-full max-w-app px-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
-          <PeoplePanel
-            title={<>Watching {partyName}</>}
-            endTime={session.end_time}
-            members={members}
-            me={me}
-            checkIns={checkIns}
-            avatars={avatars}
-            phones={phones}
-            myPos={null}
-            onMember={setCardId}
-          />
-        </div>
-      </div>
-
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[900] flex justify-center">
-        <div className="pointer-events-auto w-full max-w-app rounded-t-[28px] bg-surface-low px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-2px_12px_rgb(0_0_0/0.12)]">
+    <PartyWatch
+      partyName={session.name ?? pins[0]?.name ?? 'the party'}
+      endTime={session.end_time}
+      members={members}
+      pins={pins}
+      avatars={avatars}
+      phones={phones}
+      meId={me?.id}
+      onExit={leave}
+      bottom={
+        <>
           <p className="text-center text-sm text-ink-dim">
             You're home ✓ · {stillOut ? `${stillOut} still out` : 'everyone is home'}
           </p>
-          <button onClick={() => navigate('/', { replace: true })} className={`mt-3 ${buttonClass('secondary')}`}>
+          <button onClick={leave} className={`mt-3 ${buttonClass('secondary')}`}>
             Leave party view
           </button>
-        </div>
-      </div>
-
-      {cardMember && (
-        <MemberCard
-          member={cardMember}
-          avatar={avatars[cardMember.id] ?? null}
-          phone={phones[cardMember.id] ?? null}
-          myPos={null}
-          isMe={cardMember.id === me?.id}
-          onClose={() => setCardId(null)}
-        />
-      )}
-    </>
+        </>
+      }
+    />
   )
 }
 
-/** Live height of an element (0 when hidden), for map padding. */
-function useHeight(ref: React.RefObject<HTMLElement>, dep: unknown) {
-  const [h, setH] = useState(0)
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    setH(el.offsetHeight)
-    const ro = new ResizeObserver(() => setH(el.offsetHeight))
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [ref, dep])
-  return h
-}
 
 /** Big, bright, one-tap safety button: icon + one word. */
 function SafetyButton({
@@ -370,24 +337,24 @@ function SafetyButton({
   className,
   onClick,
   disabled,
-  big,
+  size,
 }: {
   label: string
   icon: ReactNode
   className: string
   onClick: () => void
   disabled?: boolean
-  /** HELP: taller, in the middle. */
-  big?: boolean
+  size: 'md' | 'lg' | 'xl' | 'xxl'
 }) {
+  const h = { md: 'min-h-[92px]', lg: 'min-h-[112px]', xl: 'min-h-[132px]', xxl: 'min-h-[156px]' }[size]
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`flex flex-col items-center justify-center gap-1.5 rounded-[24px] shadow-e1 active:scale-[0.97] disabled:opacity-60 ${big ? 'min-h-[112px]' : 'min-h-[92px]'} ${className}`}
+      className={`flex flex-col items-center justify-center gap-1.5 rounded-[24px] shadow-e1 transition-[min-height] duration-300 active:scale-[0.97] disabled:opacity-60 ${h} ${className}`}
     >
       {icon}
-      <span className="text-lg font-bold tracking-wide">{label}</span>
+      <span className={`font-bold tracking-wide ${size === 'xl' || size === 'xxl' ? 'text-xl' : 'text-lg'}`}>{label}</span>
     </button>
   )
 }
@@ -402,15 +369,6 @@ function BarButton({ label, icon, onClick }: { label: string; icon: ReactNode; o
   )
 }
 
-function MenuIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
-      <circle cx="5" cy="12" r="1.5" />
-      <circle cx="12" cy="12" r="1.5" />
-      <circle cx="19" cy="12" r="1.5" />
-    </svg>
-  )
-}
 
 
 /**

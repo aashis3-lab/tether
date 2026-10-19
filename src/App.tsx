@@ -49,6 +49,7 @@ export default function App() {
       <Routes>
         <Route path="/signup" element={<AuthGate />} />
         <Route path="/" element={<RequireProfile><Home /></RequireProfile>} />
+        <Route path="/profile" element={<RequireProfile><Settings /></RequireProfile>} />
         <Route path="/settings" element={<RequireProfile><Settings /></RequireProfile>} />
         <Route path="/start" element={<Navigate to="/start/where" replace />} />
         <Route path="/start/where" element={<RequireProfile><DestinationScreen /></RequireProfile>} />

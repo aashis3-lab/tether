@@ -153,15 +153,6 @@ export function FriendList({
             </button>
             {!isMe && (
               <span className="flex shrink-0 items-center">
-                {phone ? (
-                  <a
-                    href={`tel:${digits(phone)}`}
-                    aria-label={`Call ${firstName(m.name)}`}
-                    className="flex h-10 w-10 items-center justify-center rounded-full text-primary-ink hover:bg-primary/10"
-                  >
-                    <PhoneIcon width={19} height={19} />
-                  </a>
-                ) : null}
                 {phone && (
                   <a
                     href={`sms:${digits(phone)}`}
@@ -171,6 +162,15 @@ export function FriendList({
                     <ChatIcon width={18} height={18} />
                   </a>
                 )}
+                {phone ? (
+                  <a
+                    href={`tel:${digits(phone)}`}
+                    aria-label={`Call ${firstName(m.name)}`}
+                    className="flex h-10 w-10 items-center justify-center rounded-full text-primary-ink hover:bg-primary/10"
+                  >
+                    <PhoneIcon width={19} height={19} />
+                  </a>
+                ) : null}
               </span>
             )}
           </li>

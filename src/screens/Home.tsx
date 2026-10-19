@@ -2,16 +2,14 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { Avatar } from '@/components/Avatar'
-import { ChevronRightIcon, HomeIcon, ShieldIcon, UsersIcon } from '@/components/icons'
-import { BottomNav } from '@/components/BottomNav'
-import { KeychainCard } from '@/components/KeychainCard'
-import { ListItem, ListSection, Screen, Spinner, StatusChip } from '@/components/ui'
+import { ChevronRightIcon, HomeIcon, ScanIcon, ShieldIcon, UsersIcon } from '@/components/icons'
+import { TabScreen } from '@/components/BottomNav'
+import { ListItem, ListSection, Spinner, StatusChip } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
 import { WalletSheet } from '@/components/WalletSheet'
 import { useActiveSessionId } from '@/hooks/useSession'
 import { firstName } from '@/lib/format'
 import { loadHistory, partyDate, type PastParty } from '@/lib/history'
-import { keychainSupported } from '@/lib/keychain'
 import { supabase } from '@/lib/supabase'
 
 function greeting() {
@@ -53,14 +51,14 @@ export function Home() {
   const extra = profile?.additional_emergency_contacts?.length ?? 0
 
   return (
-    <Screen className="pb-28">
+    <TabScreen>
       {/* Top app bar: brand + profile */}
       <div className="-mx-1 flex min-h-[56px] items-center justify-between">
         <div className="flex items-center gap-2 pl-1">
           <img src="/icons/logo-mark.png" alt="" className="h-7 w-auto" />
           <span className="text-xl font-medium tracking-tight">Tether</span>
         </div>
-        <button onClick={() => navigate('/settings')} aria-label="Profile and settings" className="rounded-full p-1.5">
+        <button onClick={() => navigate('/profile')} aria-label="Profile and settings" className="rounded-full p-1.5">
           <Avatar name={profile?.name ?? '?'} url={profile?.avatar_url} size={34} />
         </button>
       </div>
@@ -93,10 +91,16 @@ export function Home() {
           <p className="mt-1 text-base text-primary-on-container/80">
             Start one and Tether watches the group for you until everyone's home.
           </p>
-          <button onClick={() => navigate('/start/where')} className={`mt-4 ${buttonClass('primary')}`}>
-            <UsersIcon width={18} height={18} />
-            Start a party
-          </button>
+          <div className="mt-4 grid grid-cols-[1.4fr_1fr] gap-2">
+            <button onClick={() => navigate('/start/where')} className={buttonClass('primary')}>
+              <UsersIcon width={18} height={18} />
+              Start a night
+            </button>
+            <button onClick={() => navigate('/join')} className={buttonClass('secondary')}>
+              <ScanIcon width={18} height={18} />
+              Join
+            </button>
+          </div>
         </div>
       )}
 
@@ -111,14 +115,14 @@ export function Home() {
               : 'The sober person at home who gets alerts'
           }
           trailing={guardian ? <StatusChip tone="calm">Ready</StatusChip> : undefined}
-          onClick={() => navigate('/settings?edit=contacts')}
+          onClick={() => navigate('/profile?edit=contacts')}
           chevron
         />
         <ListItem
           leading={<RowIcon><HomeIcon width={20} height={20} /></RowIcon>}
           headline="Home address"
           supporting={profile?.home_address ?? 'Used for "Get me home" and arrival checks'}
-          onClick={() => navigate('/settings?edit=home')}
+          onClick={() => navigate('/profile?edit=home')}
           chevron
         />
         <ListItem
@@ -129,13 +133,6 @@ export function Home() {
           chevron
         />
       </ListSection>
-
-      {keychainSupported() && (
-        <section>
-          <h2 className="section-title">Keychain</h2>
-          <KeychainCard compact />
-        </section>
-      )}
 
       {/* Recent activity timeline */}
       <div className="flex items-center justify-between px-4 pb-2 pt-5">
@@ -170,8 +167,7 @@ export function Home() {
       )}
 
       <WalletSheet open={wallet} onClose={() => setWallet(false)} profile={profile} me={undefined} />
-      <BottomNav />
-    </Screen>
+    </TabScreen>
   )
 }
 
