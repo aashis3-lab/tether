@@ -52,6 +52,8 @@ export function IncomingAlerts({
   userId,
   position,
   mode,
+  avatars,
+  phones,
 }: {
   alerts: Alert[]
   members: Member[]
@@ -60,6 +62,9 @@ export function IncomingAlerts({
   position: LatLng | null
   /** 'banners' = inline status strips (main screen); 'overlay' = full-screen takeover (session shell). */
   mode: 'banners' | 'overlay'
+  /** member id -> picture / phone, for the phone-dying handoff. */
+  avatars?: Record<string, string | null>
+  phones?: Record<string, string | null>
 }) {
   const [dismissed, setDismissed] = useState<Record<string, number>>({})
   const [working, setWorking] = useState<string | null>(null)
@@ -113,7 +118,15 @@ export function IncomingAlerts({
   if (mode === 'overlay') {
     if (!incoming) return null
     if (incoming.type === 'battery' && sender) {
-      return <BatteryHandoff alert={incoming} member={sender} me={me} onClose={() => snooze(incoming)} />
+      return (
+        <BatteryHandoff
+          alert={incoming}
+          member={sender}
+          avatar={avatars?.[sender.id]}
+          phone={phones?.[sender.id]}
+          onClose={() => snooze(incoming)}
+        />
+      )
     }
   }
 

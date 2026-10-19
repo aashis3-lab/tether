@@ -31,7 +31,7 @@ const SLOT_PX = 52
 // After you drag the map yourself, auto-fit waits this long.
 const USER_HOLD_MS = 20_000
 
-const FONT = "'Google Sans','Google Sans Flex',Roboto,Inter,system-ui,sans-serif"
+const FONT = "'Plus Jakarta Sans',system-ui,sans-serif"
 
 /**
  * Small avatar pin with the first name underneath (plus the status when it

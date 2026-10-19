@@ -103,7 +103,7 @@ export default {
         '6xl': ['3rem', { lineHeight: '3.5rem' }],
       },
       fontFamily: {
-        sans: ['"Google Sans"', '"Google Sans Flex"', '"Roboto"', '"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
       },
       keyframes: {
         enter: {
@@ -134,6 +134,8 @@ export default {
         e2: '0 1px 2px rgb(0 0 0 / 0.18), 0 2px 6px 2px rgb(0 0 0 / 0.1)',
         e3: '0 4px 8px 3px rgb(0 0 0 / 0.1), 0 1px 3px rgb(0 0 0 / 0.18)',
         glow: '0 0 40px -10px rgba(255, 79, 139, 0.35)',
+        // Tether's warm, soft card shadow.
+        soft: '0 1px 2px rgb(32 26 27 / 0.04), 0 8px 24px -12px rgb(255 79 139 / 0.18)',
       },
     },
   },

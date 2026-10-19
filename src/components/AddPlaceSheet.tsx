@@ -73,7 +73,7 @@ export function AddPlaceSheet({
         Pick on map
       </button>
 
-      <p className="mb-2 mt-5 text-sm font-medium text-primary-ink">
+      <p className="mb-2 mt-5 text-base font-bold">
         {query.trim() ? 'Results' : 'Nearby'}
       </p>
       <ul className="divide-y divide-line/70 rounded-xl bg-surface-high/70">
@@ -99,7 +99,7 @@ export function AddPlaceSheet({
 
       {pins.length > 0 && (
         <>
-          <p className="mb-2 mt-5 text-sm font-medium text-primary-ink">Your places</p>
+          <p className="mb-2 mt-5 text-base font-bold">Your places</p>
           <ul className="divide-y divide-line/70 rounded-xl bg-surface-high/70">
             {pins.map((p) => (
               <li key={p.id} className="flex min-h-[52px] items-center gap-3 px-4">

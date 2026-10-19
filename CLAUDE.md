@@ -18,37 +18,43 @@ a sober "guardian" at home who receives escalations.
 - Supabase: Postgres, Auth, Realtime, Edge Functions, pg_cron
 - Deploy frontend to Vercel
 - PWA: manifest with display standalone, service worker, installable
-- Design system: Google Material 3 (see UI RULES). The Figma screenshots in /designs predate the
+- Design system: Tether's own (see UI RULES), not Material or iOS. The Figma screenshots in /designs predate the
   Material 3 redesign; use them for content and flow, not for styling.
 
 ## UI RULES
-Material 3 / Google Maps feel: information-dense but calm, layered and detailed. Treat the user as
-smart: no oversized text, no giant "simple mode" buttons (the HELP button is the one exception).
-- **Tokens**: Material You tonal palette as CSS variables in `src/index.css`, mapped to Tailwind
+Tether's own identity, not Google or Apple: warm, friendly, rounded, pink-to-orange. Information-dense but calm. Treat the user as smart: no
+oversized text, except the safety controls (Find me / Status / HELP, Status tiles), which stay big,
+bright and one-tap.
+- **Look**: gradient (pink to orange) primary buttons, soft rounded-2xl buttons (not pills), bold
+  sentence-case section titles, brand-tinted icons (no iOS colored squares), soft warm shadows, no
+  Material ripple. Location services stay MapTiler + OpenStreetMap unless the user picks otherwise.
+- **Tokens**: tonal palette as CSS variables in `src/index.css`, mapped to Tailwind
   colors in `tailwind.config.js` (surface / surface-low..highest, primary, secondary, outline,
   status). Primary pink #FF4F8B, secondary orange #FF8A3D. Light mode by default, matching dark mode
   via `data-theme="dark"` (Settings → Appearance: Light / Dark / System, see `src/lib/theme.ts`).
   Never hard-code white/black for surfaces or text; use the tokens.
-- **Type**: "Google Sans" (Google Sans Flex), falling back to Roboto / Inter. 12px medium-gray labels,
+- **Type**: Plus Jakarta Sans (Tether's own friendly, rounded voice), falling back to system-ui. 12px medium-gray labels,
   14px body, 16-22px titles, occasional large stat numbers. Plenty of small secondary detail
   (timestamps, distances, battery, last seen).
 - **Shape and layout**: 4/8px spacing grid, 12-16px card radius, 28px sheets, pill buttons, 48px
   minimum touch targets, phone-width container (max 430px centered).
-- **Components** (`src/components/ui.tsx`): tonal cards with subtle elevation, chips, status chips,
-  segmented buttons, steppers, bottom sheets, icon buttons, Google Contacts-style list rows (leading
-  avatar/icon, trailing metadata) and Google Settings-style grouped sections with a description under
-  each item.
+- **Components** (`src/components/ui.tsx`): soft cards, chips, status chips, segmented toggles,
+  steppers, bottom sheets, icon buttons, list rows (leading avatar/icon, trailing metadata). Settings
+  rows show icon, label and current value; explanations live in each row's detail sheet.
 - **Map-first session**: full-screen map with friends as small avatar pins and you as a blue dot, a
   floating search-bar card (party name, status chip, venue), and a draggable bottom sheet (peek:
   group summary; expanded: friend list with distance, direction, battery, last update, call /
   navigate).
-- **HELP stays giant**: a full-width red HELP button is always visible in the session sheet's peek
-  state, one tap from the map.
+- **Safety panel**: Find me (yellow), Status (blue) and HELP (red) are big, bright, icon + one word,
+  always visible at the bottom of the party screen, one tap from the map.
+- **Navigation**: outside a party, a bottom tab bar (Start · Join · History · Profile · Settings);
+  inside a party, a slim bar (Settings · Invite · Party menu).
+- **Observing mode**: members who are home watch the party read-only ("Watching …"): map, faces,
+  statuses, call. No Find me / Status / HELP.
 - **Alerts**: separation / left-alone pings show first as a snackbar with the friend's pin pulsing on
   the map, and become a full-screen takeover if nobody acts on them. Help requests and guardian alerts
   are full-screen right away.
-- **Motion**: smooth sheet drags, shared-element transitions (list avatar → detail sheet), touch
-  ripples (`src/lib/ripple.ts`).
+- **Motion**: shared-element transitions (list avatar → detail sheet), gentle press scale.
 - Never label users as intoxicated or drunk in the UI. Names only.
 - Calm colors normally, amber for check-ins, red only for real alerts.
 
@@ -80,12 +86,10 @@ smart: no oversized text, no giant "simple mode" buttons (the HELP button is the
 3. **Start/Join**: creator sets end time (default 9 AM next day), drops venue pins on a map, gets
    join code + link + QR or rfid (like phone to phone sensor connection). Joiner sees preview "Join
    Maya's night out: 3 people", confirms, picks their own guardian (defaults to emergency contact).
-4. **Active session**: full-screen map; floating card at top (party name, status chip like "All
-   together" / "1 separated", venue, end time) with a chip row (Safety card, Invite, Add place, Get
-   home); draggable bottom sheet whose peek shows the group summary ("4 people · all within 50 ft ·
-   updated now"), Find me / Status, and the giant HELP button, and whose expanded state lists
-   everyone (distance, direction, battery, last update, call / navigate) plus Tonight actions (add a
-   place, safety card, settings, End my night) and "Party ends 9:00 AM".
+4. **Active session**: compact top people panel (one-line party name + end time, faces with status
+   badges, "+" invite; tap to expand into the member list with distance, battery, last update, call /
+   text); map in the middle; bottom safety panel with Find me / HELP (center, tallest) / Status, then
+   a slim bar (Settings, Invite, Party menu with End my night).
 5. **Lock screen**: dropped. No simulated screens; the real app runs on real phones.
 6. **Wallet card**: name, emergency contact, guardian, home address, medical info.
 7. **Guardian view** at /guardian/:token, no login: shows the SMS text that would be sent, then ONE

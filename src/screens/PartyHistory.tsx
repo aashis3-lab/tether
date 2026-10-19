@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { SearchIcon } from '@/components/icons'
 import { PartyCard } from '@/components/PartyCard'
+import { BottomNav } from '@/components/BottomNav'
 import { Header, Screen } from '@/components/ui'
 import { loadActiveParty, loadHistory, partyDate, type ActiveParty, type PastParty } from '@/lib/history'
 import { formatClock } from '@/lib/time'
@@ -33,8 +34,8 @@ export function PartyHistory() {
   )
 
   return (
-    <Screen>
-      <Header title="Your parties" back="/" />
+    <Screen className="pb-28">
+      <Header title="History" />
       <label className="mt-2 flex min-h-[56px] items-center gap-3 rounded-full bg-surface-high px-5 focus-within:ring-2 focus-within:ring-primary">
         <SearchIcon width={18} height={18} className="text-ink-dim" />
         <input
@@ -69,6 +70,7 @@ export function PartyHistory() {
           </p>
         )}
       </div>
+      <BottomNav />
     </Screen>
   )
 }

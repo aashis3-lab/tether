@@ -5,13 +5,32 @@ import { AUTH_MODE, formatPhone } from '@/auth/phoneAuth'
 import { AvatarPicker } from '@/components/AvatarPicker'
 import { BackTapSteps } from '@/components/BackTapSteps'
 import { GuardianSheet } from '@/components/GuardianSheet'
-import { BellIcon, ChevronRightIcon, HandIcon, HomeIcon, MoonIcon, PhoneIcon, PlusIcon, ShieldIcon, SunIcon, UserIcon, XIcon } from '@/components/icons'
+import { Avatar } from '@/components/Avatar'
+import {
+  BellIcon,
+  BluetoothIcon,
+  CarIcon,
+  ChatIcon,
+  CheckCircleIcon,
+  ChevronRightIcon,
+  HandIcon,
+  HomeIcon,
+  MoonIcon,
+  PhoneIcon,
+  PlusIcon,
+  ShieldIcon,
+  SunIcon,
+  UserIcon,
+  XIcon,
+} from '@/components/icons'
 import { KeychainCard } from '@/components/KeychainCard'
 import { PermissionsCard } from '@/components/PermissionsCard'
 import { SmsCard } from '@/components/SmsCard'
-import { Header, Button, ErrorText, Field, ListSection, Screen, Segmented, Sheet } from '@/components/ui'
+import { BottomNav } from '@/components/BottomNav'
+import { Header, Button, ErrorText, Field, Screen, Segmented, Sheet } from '@/components/ui'
 import { useActiveSessionId } from '@/hooks/useSession'
 import { geocode, getCurrentPosition } from '@/lib/geo'
+import { pairedKeychain, keychainSupported } from '@/lib/keychain'
 import { profileContacts } from '@/lib/profile'
 import { displayPhone, parsePhone, phoneError } from '@/lib/phone'
 import { supabase } from '@/lib/supabase'
@@ -20,15 +39,34 @@ import { getRideApp, setRideApp, type RideApp } from '@/lib/ridePref'
 import { useTheme, type ThemePref } from '@/lib/theme'
 import type { Contact, Member, Profile } from '@/lib/types'
 
-type Edit = null | 'phone' | 'contacts' | 'guardian' | 'home' | 'medical' | 'backtap'
+type Edit =
+  | null
+  | 'photo'
+  | 'phone'
+  | 'contacts'
+  | 'guardian'
+  | 'home'
+  | 'medical'
+  | 'keychain'
+  | 'backtap'
+  | 'leftalone'
+  | 'sms'
+  | 'ride'
+  | 'theme'
+  | 'permissions'
 
 
-/** Settings in grouped sections; each row opens an edit sheet. */
+/**
+ * Settings: grouped rows with an icon, a label and the current value; each
+ * row opens a detail sheet that carries the explanation.
+ */
 export function Settings() {
   const { userId, profile, refreshProfile, signOut } = useAuth()
   const navigate = useNavigate()
   const { sessionId } = useActiveSessionId(userId)
   const [me, setMe] = useState<Member | null>(null)
+  const { pref: themePref } = useTheme()
+  const [rideApp, setRideAppState] = useState<RideApp>(getRideApp)
   const [params] = useSearchParams()
   // Home's quick-info cards deep-link here, e.g. /settings?edit=home.
   const [edit, setEdit] = useState<Edit>(() => {
@@ -61,116 +99,60 @@ export function Settings() {
     setEdit(null)
   }
 
+  const guardianValue = me?.guardian_name ? `${me.guardian_name} tonight` : 'Asked each night'
+  const keychainName = pairedKeychain()
+  const themeLabel = { light: 'Light', dark: 'Dark', system: 'System' }[themePref]
+
   return (
-    <Screen>
-      <Header title="Settings" back={true} />
+    <Screen className="pb-28">
+      <Header title="Settings" back={sessionId ? true : undefined} />
 
-      {/* Profile header */}
-      <div className="flex items-center gap-4 rounded-2xl bg-surface-lowest p-4 dark:bg-surface-mid">
-        <AvatarPicker
-          userId={userId}
-          name={profile.name}
-          url={profile.avatar_url ?? null}
-          onChange={(url) => save({ avatar_url: url })}
-        />
-      </div>
+      {/* Your account */}
+      <button
+        onClick={() => setEdit('photo')}
+        className="flex w-full items-center gap-4 rounded-[24px] bg-brand-tonal p-4 text-left shadow-soft"
+      >
+        <Avatar name={profile.name} url={profile.avatar_url} size={56} ring="ring-[3px] ring-surface-lowest" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-xl font-bold text-primary-on-container">{profile.name}</span>
+          <span className="block text-sm text-primary-on-container/75">{formatPhone(profile.phone)}</span>
+        </span>
+        <span className="shrink-0 rounded-full bg-surface-lowest/70 px-3 py-1 text-xs font-bold text-primary-ink">Edit</span>
+      </button>
 
-      <ListSection title="Safety">
-        <Row
-          icon={<PhoneIcon width={20} height={20} />}
-          title="Emergency contact"
-          detail={
-            contacts.length ? `${contacts[0].name}${contacts.length > 1 ? ` · +${contacts.length - 1} more` : ''}` : 'Not set'
-          }
-          description="Gets a text if you press HELP"
-          onClick={() => setEdit('contacts')}
-        />
-        <Row
-          icon={<ShieldIcon width={20} height={20} />}
-          title="Personal guardian"
-          detail={
-            me?.guardian_name
-              ? `${me.guardian_name} · home tonight`
-              : `Asked each night${contacts[0] ? ` · defaults to ${contacts[0].name}` : ''}`
-          }
-          description="The sober person at home who receives escalations"
-          onClick={() => setEdit('guardian')}
-        />
-        <Row
-          icon={<HomeIcon width={20} height={20} />}
-          title="Home"
-          detail={profile.home_address ?? 'Not set'}
-          description="Used for Get me home and arrival checks"
-          onClick={() => setEdit('home')}
-        />
-        <Row
-          icon={<HeartIcon />}
-          title="Medical info"
-          detail={profile.medical_info || 'None'}
-          description="Only shown on your safety card and the emergency screen"
-          onClick={() => setEdit('medical')}
-        />
-      </ListSection>
+      <Group title="Safety">
+        <Row icon={<PhoneIcon width={18} height={18} />} label="Emergency contact" value={contacts[0]?.name ?? 'Not set'} onClick={() => setEdit('contacts')} />
+        <Row icon={<ShieldIcon width={18} height={18} />} label="Guardian" value={guardianValue} onClick={() => setEdit('guardian')} />
+        <Row icon={<HomeIcon width={18} height={18} />} label="Home" value={profile.home_address ?? 'Not set'} onClick={() => setEdit('home')} />
+        <Row icon={<HeartIcon />} label="Medical info" value={profile.medical_info || 'None'} onClick={() => setEdit('medical')} />
+      </Group>
 
-      <ListSection title="Account">
-        <Row
-          icon={<UserIcon width={20} height={20} />}
-          title="Phone"
-          detail={formatPhone(profile.phone)}
-          description="The number you sign in with"
-          onClick={() => setEdit('phone')}
-        />
-      </ListSection>
+      <Group title="Account">
+        <Row icon={<UserIcon width={18} height={18} />} label="Phone" value={formatPhone(profile.phone)} onClick={() => setEdit('phone')} />
+        <Row icon={<UserIcon width={18} height={18} />} label="Photo" value={profile.avatar_url ? 'Set' : 'Add'} onClick={() => setEdit('photo')} />
+      </Group>
 
-      <section>
-        <h2 className="section-title">Alerts and devices</h2>
-        <KeychainCard />
-        <div className="mt-2 divide-y divide-line/70 overflow-hidden rounded-2xl bg-surface-lowest dark:bg-surface-mid">
-          <Row
-            icon={<HandIcon width={20} height={20} />}
-            title="iPhone Back Tap"
-            detail="Accessibility → Touch → Back Tap"
-            description="Assign a shortcut and test it first"
-            onClick={() => setEdit('backtap')}
-          />
-          <div className="flex gap-4 px-4 py-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary-container/70 text-secondary-on-container">
-              <BellIcon width={20} height={20} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-lg">Left-alone alerts</span>
-              <span className="mt-0.5 block text-xs text-ink-dim">
-                A reminder after you leave a venue with no group member nearby, with a 2-minute buffer. Quiet if you leave
-                with friends. Alerts stay on until a friend taps “I'm on it”.
-              </span>
-            </span>
-          </div>
-        </div>
-      </section>
+      <Group title="Devices">
+        {keychainSupported() && (
+          <Row icon={<BluetoothIcon width={18} height={18} />} label="Keychain" value={keychainName ?? 'Not paired'} onClick={() => setEdit('keychain')} />
+        )}
+        <Row icon={<HandIcon width={18} height={18} />} label="Back Tap" value="iPhone" onClick={() => setEdit('backtap')} />
+      </Group>
 
-      <section>
-        <h2 className="section-title">Text messages</h2>
-        <SmsCard />
-      </section>
+      <Group title="Alerts">
+        <Row icon={<BellIcon width={18} height={18} />} label="Left-alone alerts" value="On" onClick={() => setEdit('leftalone')} />
+        <Row icon={<ChatIcon width={18} height={18} />} label="Test text" value="Guardian" onClick={() => setEdit('sms')} />
+      </Group>
 
-      <section>
-        <h2 className="section-title">Going home</h2>
-        <RideAppCard />
-      </section>
-
-      <section>
-        <h2 className="section-title">Appearance</h2>
-        <ThemeCard />
-      </section>
-
-      <section>
-        <h2 className="section-title">Permissions</h2>
-        <PermissionsCard />
-      </section>
+      <Group title="App">
+        <Row icon={<CarIcon width={18} height={18} />} label="Ride app" value={rideApp === 'lyft' ? 'Lyft' : 'Uber'} onClick={() => setEdit('ride')} />
+        <Row icon={themePref === 'dark' ? <MoonIcon width={18} height={18} /> : <SunIcon width={18} height={18} />} label="Theme" value={themeLabel} onClick={() => setEdit('theme')} />
+        <Row icon={<CheckCircleIcon width={18} height={18} />} label="Permissions" value="Location, alerts" onClick={() => setEdit('permissions')} />
+      </Group>
 
       <Button
         variant="text"
-        className="mt-4"
+        className="mt-4 !text-status-alert"
         onClick={async () => {
           await signOut()
           navigate('/signup', { replace: true })
@@ -179,7 +161,12 @@ export function Settings() {
         Sign out
       </Button>
 
-      {/* Edit sheets */}
+      {/* Detail pages: the explanations live here, not under every row. */}
+      <Sheet open={edit === 'photo'} onClose={() => setEdit(null)} title="Photo">
+        <p className="mb-4 text-base text-ink-dim">Friends see this on the map and in the party list.</p>
+        <AvatarPicker userId={userId} name={profile.name} url={profile.avatar_url ?? null} onChange={(url) => save({ avatar_url: url })} />
+      </Sheet>
+
       <Sheet open={edit === 'phone'} onClose={() => setEdit(null)} title="Phone">
         <p className="text-2xl">{formatPhone(profile.phone)}</p>
         <p className="mt-2 text-base text-ink-dim">
@@ -207,10 +194,10 @@ export function Settings() {
             }}
           />
         ) : (
-          <Sheet open onClose={() => setEdit(null)} title="Personal guardian">
+          <Sheet open onClose={() => setEdit(null)} title="Guardian">
             <p className="text-base text-ink-dim">
-              Your guardian is the sober person at home for a given night. Tether asks who it is each time you start or
-              join a party, and suggests {contacts[0]?.name ?? 'your emergency contact'} first.
+              Your guardian is the sober person at home who receives escalations. Tether asks who it is each time you
+              start or join a party, and suggests {contacts[0]?.name ?? 'your emergency contact'} first.
             </p>
           </Sheet>
         ))}
@@ -219,45 +206,70 @@ export function Settings() {
 
       {edit === 'medical' && <MedicalSheet profile={profile} onClose={() => setEdit(null)} onSave={save} />}
 
+      <Sheet open={edit === 'keychain'} onClose={() => setEdit(null)} title="Safety keychain">
+        <p className="mb-3 text-base text-ink-dim">A Bluetooth button that can send a Find me without unlocking your phone.</p>
+        <KeychainCard />
+      </Sheet>
+
       <Sheet open={edit === 'backtap'} onClose={() => setEdit(null)} title="iPhone Back Tap">
+        <p className="mb-3 text-base text-ink-dim">Accessibility → Touch → Back Tap. Assign a shortcut and test it first.</p>
         <BackTapSteps />
       </Sheet>
+
+      <Sheet open={edit === 'leftalone'} onClose={() => setEdit(null)} title="Left-alone alerts">
+        <p className="text-base text-ink-dim">
+          After you leave a venue with no group member nearby, Tether checks in with you after a 2-minute buffer. It stays
+          quiet if you leave with friends. Alerts keep going until a friend taps “I'm on it”. This is always on during a
+          party.
+        </p>
+      </Sheet>
+
+      <Sheet open={edit === 'sms'} onClose={() => setEdit(null)} title="Test text">
+        <SmsCard />
+      </Sheet>
+
+      <Sheet open={edit === 'ride'} onClose={() => setEdit(null)} title="Ride app">
+        <RideAppCard onChange={setRideAppState} />
+      </Sheet>
+
+      <Sheet open={edit === 'theme'} onClose={() => setEdit(null)} title="Theme">
+        <ThemeCard />
+      </Sheet>
+
+      <Sheet open={edit === 'permissions'} onClose={() => setEdit(null)} title="Permissions">
+        <p className="mb-3 text-base text-ink-dim">Tether needs location to share where you are, and notifications for alerts.</p>
+        <PermissionsCard />
+      </Sheet>
+      <BottomNav />
     </Screen>
   )
 }
 
-/** Google Settings-style row: icon, title, current value, a description, chevron. */
-function Row({
-  icon,
-  title,
-  detail,
-  description,
-  onClick,
-}: {
-  icon: ReactNode
-  title: string
-  detail: ReactNode
-  description?: string
-  onClick: () => void
-}) {
+/** A Tether settings group: bold title, soft rounded card of rows. */
+function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <button onClick={onClick} className="flex min-h-[64px] w-full items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-ink/[0.04]">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary-container/70 text-secondary-on-container">
-        {icon}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-lg">{title}</span>
-        <span className="block truncate text-base text-ink-dim">{detail}</span>
-        {description && <span className="mt-0.5 block text-xs text-ink-faint">{description}</span>}
-      </span>
-      <ChevronRightIcon width={18} height={18} className="shrink-0 text-ink-faint" />
+    <section>
+      <h2 className="px-1 pb-2 pt-6 text-base font-bold">{title}</h2>
+      <div className="divide-y divide-line/60 overflow-hidden rounded-[20px] bg-surface-lowest shadow-soft dark:bg-surface-mid">{children}</div>
+    </section>
+  )
+}
+
+/** Brand-tinted icon, label, current value in gray, chevron. */
+function Row({ icon, label, value, onClick }: { icon: ReactNode; label: string; value: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="flex min-h-[54px] w-full items-center gap-3 px-4 text-left transition-colors active:bg-primary/5">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary-ink">{icon}</span>
+      <span className="shrink-0 text-lg font-semibold">{label}</span>
+      <span className="min-w-0 flex-1 truncate text-right text-base text-ink-dim">{value}</span>
+      <ChevronRightIcon width={16} height={16} className="shrink-0 text-ink-faint" />
     </button>
   )
 }
 
 function HeartIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" />
     </svg>
   )
@@ -268,7 +280,6 @@ function ThemeCard() {
   const { pref, setPref } = useTheme()
   return (
     <div className="rounded-2xl bg-surface-lowest p-4 dark:bg-surface-mid">
-      <p className="text-lg">Theme</p>
       <p className="mb-3 text-xs text-ink-dim">Saved on this device. System follows your phone's setting.</p>
       <Segmented<ThemePref>
         value={pref}
@@ -457,15 +468,15 @@ function MedicalSheet({ profile, onClose, onSave }: { profile: Profile; onClose:
 }
 
 /** Which app "Get a ride" opens on the Going home screen (this device). */
-function RideAppCard() {
+function RideAppCard({ onChange }: { onChange?: (a: RideApp) => void }) {
   const [app, setApp] = useState<RideApp>(getRideApp)
   const pick = (a: RideApp) => {
     setRideApp(a)
     setApp(a)
+    onChange?.(a)
   }
   return (
     <div className="rounded-2xl bg-surface-lowest p-4 dark:bg-surface-mid">
-      <p className="text-lg">Ride app</p>
       <p className="mb-3 text-xs text-ink-dim">"Get a ride" on the Going home screen opens this app.</p>
       <Segmented<RideApp>
         value={app}
