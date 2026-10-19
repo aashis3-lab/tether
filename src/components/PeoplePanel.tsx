@@ -61,11 +61,11 @@ export function PeoplePanel({
 
   return (
     <div className="glass pointer-events-auto overflow-hidden rounded-[24px] shadow-e2">
-      <div className="flex items-center gap-2 px-4 pt-3">
+      <div className="flex items-center gap-2 px-4 pt-2.5">
         <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-1 text-left">
-          <span className="min-w-0">
-            <span className="block truncate text-lg font-semibold leading-tight">{title}</span>
-            <span className="block text-xs text-ink-dim">Ends {formatClock(endTime)}</span>
+          <span className="min-w-0 truncate">
+            <span className="text-lg font-bold">{title}</span>
+            <span className="text-sm text-ink-dim"> · Ends {formatClock(endTime)}</span>
           </span>
           <ChevronRightIcon width={18} height={18} className={`ml-1 shrink-0 text-ink-faint transition-transform ${open ? '-rotate-90' : 'rotate-90'}`} />
         </button>

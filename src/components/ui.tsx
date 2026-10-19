@@ -41,13 +41,13 @@ export function Field({
 
 /** Page title (Material "headline-small", 22px). */
 export function Title({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <h1 className={`text-2xl font-semibold tracking-tight ${className}`}>{children}</h1>
+  return <h1 className={`text-2xl font-bold tracking-tight ${className}`}>{children}</h1>
 }
 
 /** Elevated card on a tonal surface, 16px radius. */
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-2xl border border-line/70 bg-surface-lowest p-4 dark:border-transparent dark:bg-surface-mid ${className}`}>
+    <div className={`rounded-[20px] bg-surface-lowest p-4 shadow-soft dark:bg-surface-mid ${className}`}>
       {children}
     </div>
   )
@@ -62,7 +62,7 @@ export function Logo({ onClick }: { onClick?: () => void }) {
   return (
     <button onClick={onClick} className="flex items-center gap-2 rounded-full pr-2" aria-label="Tether">
       <img src="/icons/logo-mark.png" alt="" className="h-8 w-auto" />
-      <span className="text-xl font-medium tracking-tight">Tether</span>
+      <span className="text-xl font-bold tracking-tight">tether</span>
     </button>
   )
 }
@@ -88,7 +88,7 @@ export function Sheet({
       >
         <div className="mx-auto mb-3 h-1 w-8 rounded-full bg-outline/50" />
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-xl font-medium">{title}</h2>
+          <h2 className="text-xl font-bold">{title}</h2>
           <IconButton label="Close" onClick={onClose} className="-mr-2">
             <XIcon width={20} height={20} />
           </IconButton>
@@ -145,7 +145,7 @@ export function Header({ title, back, actions }: { title: string; back?: string 
           <ArrowLeftIcon width={22} height={22} strokeWidth={2} />
         </IconButton>
       )}
-      <h1 className={`min-w-0 flex-1 truncate text-2xl font-normal ${back ? 'pl-1' : 'pl-1'}`}>{title}</h1>
+      <h1 className="min-w-0 flex-1 truncate pl-1 text-2xl font-bold tracking-tight">{title}</h1>
       {actions}
     </div>
   )
@@ -154,7 +154,7 @@ export function Header({ title, back, actions }: { title: string; back?: string 
 /** Small context label above a title ("DESTINATION", "MAYA'S PARTY"). */
 export function Eyebrow({ children, tone = 'pink' }: { children: ReactNode; tone?: 'pink' | 'orange' }) {
   return (
-    <p className={`text-xs font-medium uppercase tracking-wider ${tone === 'pink' ? 'text-primary-ink' : 'text-secondary-ink'}`}>
+    <p className={`text-sm font-bold ${tone === 'pink' ? 'text-primary-ink' : 'text-secondary-ink'}`}>
       {children}
     </p>
   )
@@ -200,13 +200,11 @@ export function Chip({
       type="button"
       aria-pressed={selected}
       {...props}
-      className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors disabled:opacity-40 ${
-        selected
-          ? 'border-transparent bg-secondary-container text-secondary-on-container'
-          : 'border-outline-variant bg-surface-lowest/0 text-ink-dim'
+      className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border-[1.5px] px-3.5 text-sm font-semibold transition-colors disabled:opacity-40 ${
+        selected ? 'border-transparent bg-brand text-white' : 'border-ink/10 bg-surface-lowest text-ink-dim dark:bg-surface-mid'
       } ${className}`}
     >
-      {selected ? <CheckIcon width={16} height={16} strokeWidth={2.5} /> : icon}
+      {icon}
       {children}
     </button>
   )
@@ -283,8 +281,8 @@ export function ListItem({
 export function ListSection({ title, children, className = '' }: { title?: ReactNode; children: ReactNode; className?: string }) {
   return (
     <section className={className}>
-      {title && <h2 className="px-4 pb-2 pt-5 text-sm font-medium text-primary-ink">{title}</h2>}
-      <div className="divide-y divide-line/70 overflow-hidden rounded-2xl bg-surface-lowest dark:bg-surface-mid">{children}</div>
+      {title && <h2 className="px-1 pb-2 pt-6 text-base font-bold text-ink">{title}</h2>}
+      <div className="divide-y divide-line/60 overflow-hidden rounded-[20px] bg-surface-lowest shadow-soft dark:bg-surface-mid">{children}</div>
     </section>
   )
 }
@@ -302,8 +300,8 @@ export function Segmented<T extends string>({
   className?: string
 }) {
   return (
-    <div role="radiogroup" className={`flex h-10 overflow-hidden rounded-full border border-outline ${className}`}>
-      {options.map((o, i) => {
+    <div role="radiogroup" className={`flex gap-1 rounded-2xl bg-surface-high p-1 ${className}`}>
+      {options.map((o) => {
         const on = o.value === value
         return (
           <button
@@ -312,11 +310,11 @@ export function Segmented<T extends string>({
             role="radio"
             aria-checked={on}
             onClick={() => onChange(o.value)}
-            className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 px-3 text-sm font-medium transition-colors ${
-              i > 0 ? 'border-l border-outline' : ''
-            } ${on ? 'bg-secondary-container text-secondary-on-container' : 'text-ink'}`}
+            className={`flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-bold transition-all ${
+              on ? 'bg-brand text-white shadow-[0_4px_12px_-4px_rgb(var(--c-primary)/0.6)]' : 'text-ink-dim'
+            }`}
           >
-            {on ? <CheckIcon width={16} height={16} strokeWidth={2.5} /> : o.icon}
+            {o.icon}
             <span className="truncate">{o.label}</span>
           </button>
         )

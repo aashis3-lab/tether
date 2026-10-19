@@ -144,7 +144,7 @@
 
   /* Section heading above a grouped list. */
   .section-title {
-    @apply px-4 pb-2 pt-4 text-sm font-medium text-primary-ink;
+    @apply px-1 pb-2 pt-6 text-base font-bold text-ink;
   }
 }
 
@@ -154,31 +154,6 @@
     background-color: rgb(var(--c-surface-lowest) / 0.94);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-  }
-}
-
-/* Touch ripple drawn by src/lib/ripple.ts. */
-.m3-ripple-host {
-  position: fixed;
-  pointer-events: none;
-  overflow: hidden;
-  z-index: 5000;
-}
-.m3-ripple {
-  position: absolute;
-  border-radius: 9999px;
-  background: currentColor;
-  opacity: 0.16;
-  transform: scale(0);
-  animation: m3-ripple 450ms cubic-bezier(0.2, 0, 0, 1) forwards;
-}
-@keyframes m3-ripple {
-  70% {
-    opacity: 0.12;
-  }
-  to {
-    transform: scale(1);
-    opacity: 0;
   }
 }
 
@@ -200,11 +175,6 @@
   outline: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .m3-ripple {
-    display: none;
-  }
-}
 
 /* Pulsing ring around a map pin that needs attention (MapView). */
 @keyframes tether-pulse {

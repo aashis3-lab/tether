@@ -57,8 +57,8 @@ type Edit =
 
 
 /**
- * iPhone Settings-style: grouped rows with an icon, a label and the current
- * value; each row opens a detail sheet that carries the explanation.
+ * Settings: grouped rows with an icon, a label and the current value; each
+ * row opens a detail sheet that carries the explanation.
  */
 export function Settings() {
   const { userId, profile, refreshProfile, signOut } = useAuth()
@@ -107,47 +107,47 @@ export function Settings() {
     <Screen className="pb-28">
       <Header title="Settings" back={sessionId ? true : undefined} />
 
-      {/* Apple ID-style account row */}
+      {/* Your account */}
       <button
         onClick={() => setEdit('photo')}
-        className="flex w-full items-center gap-4 rounded-2xl bg-surface-lowest p-4 text-left dark:bg-surface-mid"
+        className="flex w-full items-center gap-4 rounded-[24px] bg-brand-tonal p-4 text-left shadow-soft"
       >
-        <Avatar name={profile.name} url={profile.avatar_url} size={56} />
+        <Avatar name={profile.name} url={profile.avatar_url} size={56} ring="ring-[3px] ring-surface-lowest" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-xl font-semibold">{profile.name}</span>
-          <span className="block text-xs text-ink-dim">{formatPhone(profile.phone)} · Photo and name</span>
+          <span className="block truncate text-xl font-bold text-primary-on-container">{profile.name}</span>
+          <span className="block text-sm text-primary-on-container/75">{formatPhone(profile.phone)}</span>
         </span>
-        <ChevronRightIcon width={18} height={18} className="shrink-0 text-ink-faint" />
+        <span className="shrink-0 rounded-full bg-surface-lowest/70 px-3 py-1 text-xs font-bold text-primary-ink">Edit</span>
       </button>
 
       <Group title="Safety">
-        <Row icon={<PhoneIcon width={18} height={18} />} tint="bg-danger" label="Emergency contact" value={contacts[0]?.name ?? 'Not set'} onClick={() => setEdit('contacts')} />
-        <Row icon={<ShieldIcon width={18} height={18} />} tint="bg-primary" label="Guardian" value={guardianValue} onClick={() => setEdit('guardian')} />
-        <Row icon={<HomeIcon width={18} height={18} />} tint="bg-secondary" label="Home" value={profile.home_address ?? 'Not set'} onClick={() => setEdit('home')} />
-        <Row icon={<HeartIcon />} tint="bg-danger" label="Medical info" value={profile.medical_info || 'None'} onClick={() => setEdit('medical')} />
+        <Row icon={<PhoneIcon width={18} height={18} />} label="Emergency contact" value={contacts[0]?.name ?? 'Not set'} onClick={() => setEdit('contacts')} />
+        <Row icon={<ShieldIcon width={18} height={18} />} label="Guardian" value={guardianValue} onClick={() => setEdit('guardian')} />
+        <Row icon={<HomeIcon width={18} height={18} />} label="Home" value={profile.home_address ?? 'Not set'} onClick={() => setEdit('home')} />
+        <Row icon={<HeartIcon />} label="Medical info" value={profile.medical_info || 'None'} onClick={() => setEdit('medical')} />
       </Group>
 
       <Group title="Account">
-        <Row icon={<UserIcon width={18} height={18} />} tint="bg-[#1a73e8]" label="Phone" value={formatPhone(profile.phone)} onClick={() => setEdit('phone')} />
-        <Row icon={<UserIcon width={18} height={18} />} tint="bg-[#1a73e8]" label="Photo" value={profile.avatar_url ? 'Set' : 'Add'} onClick={() => setEdit('photo')} />
+        <Row icon={<UserIcon width={18} height={18} />} label="Phone" value={formatPhone(profile.phone)} onClick={() => setEdit('phone')} />
+        <Row icon={<UserIcon width={18} height={18} />} label="Photo" value={profile.avatar_url ? 'Set' : 'Add'} onClick={() => setEdit('photo')} />
       </Group>
 
       <Group title="Devices">
         {keychainSupported() && (
-          <Row icon={<BluetoothIcon width={18} height={18} />} tint="bg-[#1a73e8]" label="Keychain" value={keychainName ?? 'Not paired'} onClick={() => setEdit('keychain')} />
+          <Row icon={<BluetoothIcon width={18} height={18} />} label="Keychain" value={keychainName ?? 'Not paired'} onClick={() => setEdit('keychain')} />
         )}
-        <Row icon={<HandIcon width={18} height={18} />} tint="bg-outline" label="Back Tap" value="iPhone" onClick={() => setEdit('backtap')} />
+        <Row icon={<HandIcon width={18} height={18} />} label="Back Tap" value="iPhone" onClick={() => setEdit('backtap')} />
       </Group>
 
       <Group title="Alerts">
-        <Row icon={<BellIcon width={18} height={18} />} tint="bg-secondary" label="Left-alone alerts" value="On" onClick={() => setEdit('leftalone')} />
-        <Row icon={<ChatIcon width={18} height={18} />} tint="bg-safe" label="Test text" value="Guardian" onClick={() => setEdit('sms')} />
+        <Row icon={<BellIcon width={18} height={18} />} label="Left-alone alerts" value="On" onClick={() => setEdit('leftalone')} />
+        <Row icon={<ChatIcon width={18} height={18} />} label="Test text" value="Guardian" onClick={() => setEdit('sms')} />
       </Group>
 
       <Group title="App">
-        <Row icon={<CarIcon width={18} height={18} />} tint="bg-[#1a73e8]" label="Ride app" value={rideApp === 'lyft' ? 'Lyft' : 'Uber'} onClick={() => setEdit('ride')} />
-        <Row icon={themePref === 'dark' ? <MoonIcon width={18} height={18} /> : <SunIcon width={18} height={18} />} tint="bg-primary" label="Theme" value={themeLabel} onClick={() => setEdit('theme')} />
-        <Row icon={<CheckCircleIcon width={18} height={18} />} tint="bg-outline" label="Permissions" value="Location, alerts" onClick={() => setEdit('permissions')} />
+        <Row icon={<CarIcon width={18} height={18} />} label="Ride app" value={rideApp === 'lyft' ? 'Lyft' : 'Uber'} onClick={() => setEdit('ride')} />
+        <Row icon={themePref === 'dark' ? <MoonIcon width={18} height={18} /> : <SunIcon width={18} height={18} />} label="Theme" value={themeLabel} onClick={() => setEdit('theme')} />
+        <Row icon={<CheckCircleIcon width={18} height={18} />} label="Permissions" value="Location, alerts" onClick={() => setEdit('permissions')} />
       </Group>
 
       <Button
@@ -245,34 +245,22 @@ export function Settings() {
   )
 }
 
-/** iPhone Settings-style group: small gray title, rounded block of rows. */
+/** A Tether settings group: bold title, soft rounded card of rows. */
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
-      <h2 className="px-4 pb-1.5 pt-5 text-xs font-medium uppercase tracking-wider text-ink-dim">{title}</h2>
-      <div className="divide-y divide-line/70 overflow-hidden rounded-2xl bg-surface-lowest dark:bg-surface-mid">{children}</div>
+      <h2 className="px-1 pb-2 pt-6 text-base font-bold">{title}</h2>
+      <div className="divide-y divide-line/60 overflow-hidden rounded-[20px] bg-surface-lowest shadow-soft dark:bg-surface-mid">{children}</div>
     </section>
   )
 }
 
-/** Icon, label, current value right-aligned in gray, chevron. */
-function Row({
-  icon,
-  tint,
-  label,
-  value,
-  onClick,
-}: {
-  icon: ReactNode
-  tint: string
-  label: string
-  value: string
-  onClick: () => void
-}) {
+/** Brand-tinted icon, label, current value in gray, chevron. */
+function Row({ icon, label, value, onClick }: { icon: ReactNode; label: string; value: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="flex min-h-[48px] w-full items-center gap-3 px-3 text-left transition-colors hover:bg-ink/[0.04]">
-      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white ${tint}`}>{icon}</span>
-      <span className="shrink-0 text-lg">{label}</span>
+    <button onClick={onClick} className="flex min-h-[54px] w-full items-center gap-3 px-4 text-left transition-colors active:bg-primary/5">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary-ink">{icon}</span>
+      <span className="shrink-0 text-lg font-semibold">{label}</span>
       <span className="min-w-0 flex-1 truncate text-right text-base text-ink-dim">{value}</span>
       <ChevronRightIcon width={16} height={16} className="shrink-0 text-ink-faint" />
     </button>

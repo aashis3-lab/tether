@@ -36,7 +36,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-[700] flex justify-center border-t border-line/70 bg-surface-low/95 backdrop-blur"
+      className="fixed inset-x-0 bottom-0 z-[700] flex justify-center bg-surface-lowest/95 shadow-[0_-6px_24px_-12px_rgb(var(--c-primary)/0.25)] backdrop-blur dark:bg-surface-mid/95"
     >
       <ul className="grid w-full max-w-app grid-cols-5 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1.5">
         {TABS.map((t) => {
@@ -50,19 +50,14 @@ export function BottomNav() {
                 className="flex min-h-[52px] w-full flex-col items-center justify-center gap-0.5 rounded-xl"
               >
                 {t.primary ? (
-                  <span className="flex h-9 w-12 items-center justify-center rounded-full bg-primary text-primary-on shadow-e1">
+                  <span className="-mt-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand text-white shadow-[0_8px_18px_-6px_rgb(var(--c-primary)/0.7)]">
                     {t.icon}
                   </span>
                 ) : (
-                  <span
-                    className={`flex h-8 w-14 items-center justify-center rounded-full transition-colors ${
-                      active ? 'bg-primary-container text-primary-ink' : 'text-ink-dim'
-                    }`}
-                  >
-                    {t.icon}
-                  </span>
+                  <span className={`flex h-7 items-center justify-center transition-colors ${active ? 'text-primary-ink' : 'text-ink-faint'}`}>{t.icon}</span>
                 )}
-                <span className={`text-xs font-medium ${active || t.primary ? 'text-primary-ink' : 'text-ink-dim'}`}>{t.label}</span>
+                <span className={`text-xs ${active ? 'font-bold text-primary-ink' : t.primary ? 'font-bold text-ink' : 'font-medium text-ink-faint'}`}>{t.label}</span>
+                <span className={`h-1 w-1 rounded-full ${active && !t.primary ? 'bg-primary' : 'bg-transparent'}`} />
               </button>
             </li>
           )

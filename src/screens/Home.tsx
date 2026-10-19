@@ -139,7 +139,7 @@ export function Home() {
 
       {/* Recent activity timeline */}
       <div className="flex items-center justify-between px-4 pb-2 pt-5">
-        <h2 className="text-sm font-medium text-primary-ink">Recent activity</h2>
+        <h2 className="text-base font-bold">Recent activity</h2>
         {history && history.length > 0 && (
           <button onClick={() => navigate('/history')} className="-mr-3 flex h-8 items-center gap-0.5 rounded-full px-3 text-sm font-medium text-primary-ink">
             See all <ChevronRightIcon width={16} height={16} />

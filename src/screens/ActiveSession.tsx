@@ -160,20 +160,6 @@ function PartyView() {
                 onInvite={() => navigate(`${base}/invite`)}
                 onMember={openMember}
               />
-              <div className="pointer-events-auto mt-2 flex items-center gap-2">
-                <MapChip icon={<UsersIcon width={16} height={16} />} onClick={() => navigate(`${base}/invite`)}>
-                  Invite
-                </MapChip>
-                <MapChip icon={<PlusIcon width={16} height={16} />} onClick={() => setAddOpen(true)}>
-                  Add location
-                </MapChip>
-                <button
-                  onClick={() => navigate(`${base}/home`)}
-                  className="ml-auto flex h-9 shrink-0 items-center rounded-full bg-surface-highest/90 px-3.5 text-sm font-medium text-ink-dim shadow-e1 backdrop-blur active:scale-95"
-                >
-                  End my night
-                </button>
-              </div>
               <div className="pointer-events-auto mt-2">
                 <IncomingAlerts alerts={alerts} members={members} me={me} userId={userId} position={myPos} mode="banners" />
               </div>
@@ -218,7 +204,7 @@ function PartyView() {
                     <span className="shrink-0">Open</span>
                   </button>
                 )}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-[1fr_1.2fr_1fr] items-end gap-2">
                   <SafetyButton
                     label="Find me"
                     icon={<SendIcon width={28} height={28} strokeWidth={2.25} />}
@@ -227,16 +213,17 @@ function PartyView() {
                     onClick={() => void findMe()}
                   />
                   <SafetyButton
+                    label="HELP"
+                    icon={<AlertTriangleIcon width={30} height={30} strokeWidth={2.25} />}
+                    className="bg-danger text-white shadow-e3"
+                    big
+                    onClick={() => navigate(`${base}/help`)}
+                  />
+                  <SafetyButton
                     label="Status"
                     icon={<UserCheckIcon width={28} height={28} strokeWidth={2.25} />}
                     className="bg-[#1a73e8] text-white"
                     onClick={() => navigate(`${base}/update`)}
-                  />
-                  <SafetyButton
-                    label="HELP"
-                    icon={<AlertTriangleIcon width={30} height={30} strokeWidth={2.25} />}
-                    className="bg-danger text-white"
-                    onClick={() => navigate(`${base}/help`)}
                   />
                 </div>
               </div>
@@ -383,18 +370,21 @@ function SafetyButton({
   className,
   onClick,
   disabled,
+  big,
 }: {
   label: string
   icon: ReactNode
   className: string
   onClick: () => void
   disabled?: boolean
+  /** HELP: taller, in the middle. */
+  big?: boolean
 }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`flex min-h-[92px] flex-col items-center justify-center gap-1.5 rounded-[22px] shadow-e1 active:scale-[0.97] disabled:opacity-60 ${className}`}
+      className={`flex flex-col items-center justify-center gap-1.5 rounded-[24px] shadow-e1 active:scale-[0.97] disabled:opacity-60 ${big ? 'min-h-[112px]' : 'min-h-[92px]'} ${className}`}
     >
       {icon}
       <span className="text-lg font-bold tracking-wide">{label}</span>
@@ -405,9 +395,9 @@ function SafetyButton({
 /** Slim bottom-bar item, same style as the home tab bar. */
 function BarButton({ label, icon, onClick }: { label: string; icon: ReactNode; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="flex min-h-[48px] flex-col items-center justify-center gap-0.5 text-ink-dim">
+    <button onClick={onClick} className="flex min-h-[48px] flex-col items-center justify-center gap-0.5 text-ink-faint active:text-primary-ink">
       {icon}
-      <span className="text-xs font-medium">{label}</span>
+      <span className="text-xs font-semibold">{label}</span>
     </button>
   )
 }
@@ -422,18 +412,6 @@ function MenuIcon() {
   )
 }
 
-/** Translucent chip floating over the map. */
-function MapChip({ icon, children, onClick }: { icon: ReactNode; children: ReactNode; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="glass flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium text-ink shadow-e1 active:scale-95"
-    >
-      <span className="text-ink-dim">{icon}</span>
-      {children}
-    </button>
-  )
-}
 
 /**
  * Uber-style "Pick on map": the pin stays fixed in the middle, you drag the

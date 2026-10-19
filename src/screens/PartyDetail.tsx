@@ -34,7 +34,7 @@ export function PartyDetail() {
               : `${party.homeCount} of ${party.members.length} checked in home`}
           </p>
 
-          <h2 className="mb-2 mt-6 text-sm font-medium text-primary-ink">Who came</h2>
+          <h2 className="mb-2 mt-6 text-base font-bold">Who came</h2>
           <ul className="divide-y divide-line/70 rounded-2xl bg-surface-high/70 px-4">
             {party.members.map((m) => (
               <li key={m.id} className="flex min-h-[60px] items-center gap-3 py-2">
@@ -52,7 +52,7 @@ export function PartyDetail() {
 
           {party.venues.length > 0 && (
             <>
-              <h2 className="mb-2 mt-6 text-sm font-medium text-primary-ink">Where</h2>
+              <h2 className="mb-2 mt-6 text-base font-bold">Where</h2>
               <ul className="divide-y divide-line/70 rounded-2xl bg-surface-high/70 px-4">
                 {party.venues.map((v, i) => (
                   <li key={i} className="flex min-h-[52px] items-center gap-3">
@@ -64,7 +64,7 @@ export function PartyDetail() {
             </>
           )}
 
-          <h2 className="mb-2 mt-6 text-sm font-medium text-primary-ink">Your guardian</h2>
+          <h2 className="mb-2 mt-6 text-base font-bold">Your guardian</h2>
           <div className="flex min-h-[52px] items-center gap-3 rounded-2xl bg-surface-high/70 px-4">
             <ShieldIcon width={18} height={18} className="text-primary-ink" />
             <span className="font-semibold">{party.myGuardian ?? 'Not set'}</span>
