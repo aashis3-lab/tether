@@ -328,12 +328,12 @@ export function Segmented<T extends string>({
 /** Horizontal stepper for multi-step flows: numbered dots joined by lines. */
 export function Stepper({ steps, current }: { steps: string[]; current: number }) {
   return (
-    <ol className="mb-5 flex items-center gap-2" aria-label={`Step ${current + 1} of ${steps.length}`}>
+    <ol className="mb-5 flex items-center gap-1.5" aria-label={`Step ${current + 1} of ${steps.length}`}>
       {steps.map((s, i) => {
         const done = i < current
         const on = i === current
         return (
-          <li key={s} className={`flex items-center gap-2 ${i < steps.length - 1 ? 'flex-1' : ''}`}>
+          <li key={s} aria-current={on ? 'step' : undefined} className={`flex min-w-0 items-center gap-1.5 ${i < steps.length - 1 ? 'flex-1' : ''}`}>
             <span
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
                 done || on ? 'bg-primary text-primary-on' : 'border border-outline text-ink-dim'
@@ -341,8 +341,10 @@ export function Stepper({ steps, current }: { steps: string[]; current: number }
             >
               {done ? <CheckIcon width={14} height={14} strokeWidth={3} /> : i + 1}
             </span>
-            {on && <span className="whitespace-nowrap text-xs font-medium text-ink">{s}</span>}
-            {i < steps.length - 1 && <span className={`h-px min-w-3 flex-1 ${done ? 'bg-primary' : 'bg-outline-variant'}`} />}
+            {(done || on) && (
+              <span className={`whitespace-nowrap text-xs font-medium ${on ? 'text-ink' : 'text-ink-dim'}`}>{s}</span>
+            )}
+            {i < steps.length - 1 && <span className={`h-px min-w-2 flex-1 ${done ? 'bg-primary' : 'bg-outline-variant'}`} />}
           </li>
         )
       })}

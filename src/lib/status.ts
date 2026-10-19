@@ -3,6 +3,9 @@ import { centroid, distanceM, formatDistance, hasLocation, timeAgo } from './geo
 import { firstName } from './format'
 import type { Alert, LatLng, Member, MemberStatus } from './types'
 
+/** Shown wherever a request goes out without a location to share. */
+export const LOCATION_OFF = "Your location is off. Your group can't see where you are."
+
 export type Tone = 'calm' | 'checkin' | 'alert'
 
 // Never label anyone as intoxicated: these are neutral, location-only words.
@@ -114,11 +117,15 @@ export function groupState(members: Member[], alerts: Alert[], meId: string | un
     return { tone: 'checkin', line: `${names(away, meId)} ${solo ? 'is' : 'are'} away`, sub }
   }
 
-  const together = out.filter((m) => m.status === 'together').length
+  // "Together" only counts people whose location the group can actually see.
+  const together = out.filter((m) => m.status === 'together' && hasLocation(m)).length
+  const dark = out.filter((m) => m.status === 'together' && !hasLocation(m))
+  const darkSub = dark.length ? `${names(dark, meId)} ${dark.length === 1 && dark[0].id !== meId ? 'has' : 'have'} location off` : null
+  const fullSub = [darkSub, sub].filter(Boolean).join(' · ') || null
   if (members.length === 0) return { tone: 'calm', line: 'Loading your group…', sub: null }
   if (out.length === 0) return { tone: 'calm', line: 'Everyone is home', sub: null }
-  if (members.length === 1) return { tone: 'calm', line: 'Just you so far', sub: 'Invite friends to join' }
-  return { tone: 'calm', line: together === out.length ? `All ${together} together` : `${together} together`, sub }
+  if (members.length === 1) return { tone: 'calm', line: 'Just you so far', sub: darkSub }
+  return { tone: 'calm', line: together === out.length ? `All ${together} together` : `${together} of ${out.length} together`, sub: fullSub }
 }
 
 /**

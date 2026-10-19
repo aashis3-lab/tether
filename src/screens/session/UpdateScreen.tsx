@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
-import { CheckCircleIcon } from '@/components/icons'
+import { BatteryIcon, CarIcon, CheckCircleIcon, HomeIcon, UserIcon, UsersIcon } from '@/components/icons'
 import { Header, Button, ErrorText, Screen, Sheet, Title, inputClass } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
 import { ACTIVITIES, STATUS_CHOICES, activityTimeLeft, liveActivity, type ActivityDef, type ActivityKey } from '@/lib/activities'
@@ -10,6 +10,15 @@ import { firstName } from '@/lib/format'
 import { errorText } from '@/lib/toast'
 import { supabase } from '@/lib/supabase'
 import { useSessionCtx } from './context'
+
+/** Icon and one-line explanation for each status in the list. */
+const STATUS_META: Partial<Record<ActivityKey, { icon: ReactNode; desc: string }>> = {
+  heading_home: { icon: <HomeIcon width={20} height={20} />, desc: 'Pick how, see your ETA; Tether watches until you arrive' },
+  leaving_new: { icon: <UserIcon width={20} height={20} />, desc: "Someone outside the group; check-ins stay on" },
+  leaving_friend: { icon: <UsersIcon width={20} height={20} />, desc: 'With someone from your group; keeps alerts quiet' },
+  ride: { icon: <CarIcon width={20} height={20} />, desc: 'Waiting on a car' },
+  phone_dying: { icon: <BatteryIcon width={20} height={20} />, desc: 'A friend is asked to stay with you' },
+}
 
 /**
  * "What's happening?", one status at a time; picking a tile replaces the
@@ -72,7 +81,9 @@ export function UpdateScreen() {
   }
 
   function tap(def: ActivityDef) {
-    if (def.key === 'leaving_friend' || def.key === 'leaving_new') setPicker(def.key)
+    // Heading home asks how you're getting there, shows home + ETA, and starts arrival tracking.
+    if (def.key === 'heading_home') navigate(`${back}/home`)
+    else if (def.key === 'leaving_friend' || def.key === 'leaving_new') setPicker(def.key)
     else void apply(def)
   }
 
@@ -93,32 +104,35 @@ export function UpdateScreen() {
         )}
       </p>
 
-      <div className="mt-5 grid grid-cols-2 gap-3">
-        {STATUS_CHOICES.map((k, i) => {
+      <div className="mt-5 divide-y divide-line/70 overflow-hidden rounded-2xl bg-surface-lowest dark:bg-surface-mid" role="radiogroup" aria-label="Your status">
+        {STATUS_CHOICES.map((k) => {
           const a = def(k)
           const active = current?.key === a.key
-          // Only the current status is highlighted. "Someone new" keeps its amber label so it never looks like leaving with a friend.
-          const tone = active
-            ? a.key === 'leaving_new'
-              ? 'border-status-checkin bg-status-checkin/15'
-              : 'border-primary bg-primary-container/60'
-            : 'border-transparent bg-surface-lowest dark:bg-surface-mid'
+          const meta = STATUS_META[a.key]
           return (
             <button
               key={a.key}
+              role="radio"
+              aria-checked={active}
+              aria-label={`Set status: ${a.label}`}
               disabled={busy !== null}
               onClick={() => tap(a)}
-              aria-pressed={active}
-              className={`flex min-h-[104px] flex-col items-center justify-center gap-2 rounded-2xl border-2 p-3 shadow-e1 text-center transition active:scale-95 disabled:opacity-40 ${tone} ${
-                i === STATUS_CHOICES.length - 1 && STATUS_CHOICES.length % 2 ? 'col-span-2 min-h-[80px]' : ''
+              className={`flex min-h-[64px] w-full items-center gap-4 px-4 py-3 text-left transition-colors disabled:opacity-40 ${
+                active ? 'bg-primary-container/50' : 'hover:bg-ink/[0.04]'
               }`}
             >
-              <span className="text-4xl" aria-hidden="true">
-                {a.emoji}
+              <span
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                  a.key === 'leaving_new' ? 'bg-status-checkin/15 text-status-checkin' : 'bg-secondary-container/70 text-secondary-on-container'
+                }`}
+              >
+                {meta?.icon}
               </span>
-              <span className={`text-lg font-medium leading-tight ${a.key === 'leaving_new' ? 'text-status-checkin' : ''}`}>
-                {busy === a.key ? '…' : a.tile ?? a.label}
+              <span className="min-w-0 flex-1">
+                <span className="block text-lg">{busy === a.key ? 'Saving…' : a.label}</span>
+                {meta && <span className="block text-xs text-ink-dim">{meta.desc}</span>}
               </span>
+              {active && <CheckCircleIcon width={20} height={20} className="shrink-0 text-primary-ink" />}
             </button>
           )
         })}
@@ -147,9 +161,10 @@ export function UpdateScreen() {
             disabled={busy !== null}
             onClick={() => tap(def('back'))}
             aria-pressed={!current}
+            aria-label="Set status: Back with group"
             className={buttonClass('safe', true)}
           >
-            <span aria-hidden="true">✅</span> {busy === 'back' ? '…' : 'Back with group'}
+            <CheckCircleIcon width={20} height={20} /> {busy === 'back' ? 'Saving…' : 'Back with group'}
           </button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { displayPhone, parsePhone, phoneError } from '@/lib/phone'
 import type { Contact } from '@/lib/types'
 import { Avatar } from './Avatar'
 import { PlusIcon } from './icons'
@@ -50,7 +51,7 @@ export function GuardianPicker({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-lg">{c.name}</p>
                 <p className="truncate text-xs text-ink-dim">
-                  {c.phone}
+                  {displayPhone(c.phone)}
                   {i === 0 ? ' · emergency contact' : ''}
                 </p>
               </div>
@@ -82,12 +83,22 @@ export function GuardianPicker({
       {custom && (
         <div className="mt-4 flex flex-col gap-4">
           <Field label="Guardian name" value={value.name} onChange={(e) => onChange({ ...value, name: e.target.value })} />
-          <Field
-            label="Guardian phone"
-            type="tel"
-            value={value.phone}
-            onChange={(e) => onChange({ ...value, phone: e.target.value })}
-          />
+          <div>
+            <Field
+              label="Guardian phone"
+              type="tel"
+              inputMode="tel"
+              placeholder="(555) 123-4567"
+              value={value.phone}
+              onChange={(e) => onChange({ ...value, phone: e.target.value })}
+              onBlur={() => {
+                const e164 = parsePhone(value.phone)
+                if (e164) onChange({ ...value, phone: displayPhone(e164) })
+              }}
+              aria-invalid={Boolean(phoneError(value.phone))}
+            />
+            {phoneError(value.phone) && <p className="mt-1.5 px-1 text-xs text-status-alert">{phoneError(value.phone)}</p>}
+          </div>
         </div>
       )}
     </div>

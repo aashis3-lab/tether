@@ -144,7 +144,7 @@ export function KeychainCard({ compact = false }: { compact?: boolean }) {
           )}
         </div>
       ) : (
-        <button onClick={pair} disabled={busy} className={`mt-3 ${buttonClass('primary')}`}>
+        <button onClick={pair} disabled={busy} className={`mt-3 ${buttonClass('secondary')}`}>
           <BluetoothIcon width={18} height={18} />
           {busy ? 'Looking for devices…' : 'Pair a keychain'}
         </button>

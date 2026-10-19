@@ -5,6 +5,8 @@ import { CheckIcon, PhoneIcon } from '@/components/icons'
 import { Header, ErrorText, Screen } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
 import { claimerName, evaluateSession, helpPressed, raiseAlert, resolveAlert } from '@/lib/alerts'
+import { LOCATION_OFF } from '@/lib/status'
+import { supabase } from '@/lib/supabase'
 import { tryOrToast } from '@/lib/toast'
 import { formatPhone } from '@/auth/phoneAuth'
 import { firstName } from '@/lib/format'
@@ -27,13 +29,13 @@ const CANCEL_SECONDS = 5
 const telHref = (n: string) => `tel:${n.replace(/[^\d+]/g, '')}`
 
 /**
- * HELP, two huge call buttons. Opening this screen starts a 3-second "tap to
- * cancel" countdown, then raises the help alert (same ladder as before), so
+ * HELP, two huge call buttons. Opening this screen starts a short countdown
+ * (only the Cancel button cancels), then raises the help alert (same ladder as before), so
  * the group knows even if you never tap anything else. Calling the guardian
  * escalates to a guardian alert; the 911 hold escalates to emergency.
  */
 export function HelpScreen() {
-  const { session, members, alerts, me } = useSessionCtx()
+  const { session, members, alerts, me, myPos } = useSessionCtx()
   const navigate = useNavigate()
   const [error, setError] = useState('')
   const raised = useRef(false)
@@ -108,8 +110,18 @@ export function HelpScreen() {
       <Header title="Help" back={back} />
       <p className="flex items-center gap-2 rounded-xl bg-status-alert/10 px-4 py-3 text-base font-medium text-status-alert" aria-live="polite">
         <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-status-alert" />
-        {claimer ? `Your group knows, ${firstName(claimer)} is on it.` : 'Your group has been alerted with your location.'}
+        {claimer
+          ? `Your group knows, ${firstName(claimer)} is on it.`
+          : myPos
+            ? 'Your group has been alerted with your location.'
+            : 'Your group has been alerted.'}
       </p>
+      {!myPos && (
+        <p className="mt-2 rounded-xl bg-status-checkin/10 px-4 py-3 text-base font-medium text-status-checkin">
+          {LOCATION_OFF}
+        </p>
+      )}
+      {me && myAlert && <TextDelivery memberId={me.id} since={myAlert.created_at} />}
 
       <div className="mt-5 flex flex-1 flex-col gap-4">
         {/* Call 911 first and biggest: press and hold 2 s (a ring fills), then confirm. */}
@@ -236,26 +248,87 @@ export function HelpScreen() {
   )
 }
 
-/** Full-screen "Sending alert… tap to cancel" before HELP alerts anyone. */
+/** Full-screen "Sending alert…" before HELP alerts anyone. Only Cancel cancels. */
 function SendingCountdown({ seconds, onCancel }: { seconds: number; onCancel: () => void }) {
   return (
-    <div className="fixed inset-0 z-[2000] flex justify-center bg-danger text-white" onClick={onCancel}>
+    <div className="fixed inset-0 z-[2000] flex justify-center bg-danger text-white">
       <div className="flex w-full max-w-app flex-col px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(3rem,env(safe-area-inset-top))]">
         <div className="flex flex-1 flex-col items-center justify-center text-center" aria-live="assertive">
           <p className="text-2xl font-medium">Sending alert…</p>
           <p className="mt-6 text-[7rem] font-semibold leading-none tabular-nums">{seconds}</p>
-          <p className="mt-6 text-lg">Tap anywhere to cancel</p>
         </div>
         <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onCancel()
-          }}
+          onClick={onCancel}
           className="min-h-[64px] w-full rounded-full bg-white text-xl font-medium text-black active:scale-[0.98]"
         >
           Cancel
         </button>
       </div>
     </div>
+  )
+}
+
+interface OutboxRow {
+  id: string
+  to_name: string | null
+  to_phone: string
+  status: 'pending' | 'sending' | 'sent' | 'failed'
+  created_at: string
+}
+
+/**
+ * Who was actually texted about this HELP, from sms_outbox: "AS was texted ✓"
+ * or "Text to AS failed" with a Call fallback. Polls while the screen is open.
+ */
+function TextDelivery({ memberId, since }: { memberId: string; since: string }) {
+  const [rows, setRows] = useState<OutboxRow[]>([])
+  useEffect(() => {
+    let live = true
+    const from = new Date(new Date(since).getTime() - 60_000).toISOString()
+    const load = async () => {
+      const { data } = await supabase
+        .from('sms_outbox')
+        .select('id, to_name, to_phone, status, created_at')
+        .eq('member_id', memberId)
+        .gte('created_at', from)
+        .order('created_at', { ascending: false })
+      if (!live) return
+      // Latest text per recipient.
+      const seen = new Set<string>()
+      setRows(((data ?? []) as OutboxRow[]).filter((r) => (seen.has(r.to_phone) ? false : (seen.add(r.to_phone), true))))
+    }
+    void load()
+    const t = window.setInterval(load, 3000)
+    return () => {
+      live = false
+      window.clearInterval(t)
+    }
+  }, [memberId, since])
+
+  if (rows.length === 0) return null
+  return (
+    <ul className="mt-2 divide-y divide-line/70 overflow-hidden rounded-xl bg-surface-lowest dark:bg-surface-mid">
+      {rows.map((r) => {
+        const who = r.to_name?.trim() || formatPhone(r.to_phone)
+        return (
+          <li key={r.id} className="flex min-h-[52px] items-center gap-3 px-4 py-2">
+            <span className="min-w-0 flex-1 text-base">
+              {r.status === 'sent' ? (
+                <span className="text-status-calm">{who} was texted ✓</span>
+              ) : r.status === 'failed' ? (
+                <span className="text-status-alert">Text to {who} failed</span>
+              ) : (
+                <span className="text-ink-dim">Texting {who}…</span>
+              )}
+            </span>
+            {r.status === 'failed' && (
+              <a href={telHref(r.to_phone)} className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-medium text-primary-on">
+                <PhoneIcon width={16} height={16} /> Call {firstName(who)}
+              </a>
+            )}
+          </li>
+        )
+      })}
+    </ul>
   )
 }

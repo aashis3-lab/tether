@@ -13,6 +13,7 @@ import { Header, Button, ErrorText, Field, ListSection, Screen, Segmented, Sheet
 import { useActiveSessionId } from '@/hooks/useSession'
 import { geocode, getCurrentPosition } from '@/lib/geo'
 import { profileContacts } from '@/lib/profile'
+import { displayPhone, parsePhone, phoneError } from '@/lib/phone'
 import { supabase } from '@/lib/supabase'
 import { attempt } from '@/lib/toast'
 import { getRideApp, setRideApp, type RideApp } from '@/lib/ridePref'
@@ -200,7 +201,7 @@ export function Settings() {
             onConfirm={async (g: Contact) => {
               const ok = await attempt(
                 "Couldn't save tonight's guardian",
-                supabase.from('session_members').update({ guardian_name: g.name, guardian_phone: g.phone }).eq('id', me.id)
+                supabase.from('session_members').update({ guardian_name: g.name, guardian_phone: parsePhone(g.phone) ?? g.phone }).eq('id', me.id)
               )
               if (ok) setEdit(null)
             }}
@@ -303,12 +304,13 @@ function useSaver(onSave: SaveFn) {
 
 function ContactsSheet({ profile, onClose, onSave }: { profile: Profile; onClose: () => void; onSave: SaveFn }) {
   const [list, setList] = useState<Contact[]>(() => {
-    const c = profileContacts(profile)
+    const c = profileContacts(profile).map((x) => ({ ...x, phone: displayPhone(x.phone) }))
     return c.length ? c : [{ name: '', phone: '' }]
   })
   const { busy, error, run } = useSaver(onSave)
   const set = (i: number, p: Partial<Contact>) => setList((l) => l.map((c, j) => (j === i ? { ...c, ...p } : c)))
-  const ok = list[0].name.trim() && list[0].phone.trim()
+  const ok =
+    list[0].name.trim() && parsePhone(list[0].phone) && list.every((c) => !c.phone.trim() || parsePhone(c.phone))
 
   return (
     <Sheet open onClose={onClose} title="Emergency contacts">
@@ -338,8 +340,14 @@ function ContactsSheet({ profile, onClose, onSave }: { profile: Profile; onClose
               type="tel"
               value={c.phone}
               onChange={(e) => set(i, { phone: e.target.value })}
+              onBlur={() => {
+                const e164 = parsePhone(c.phone)
+                if (e164) set(i, { phone: displayPhone(e164) })
+              }}
+              aria-invalid={Boolean(phoneError(c.phone))}
               className="block h-11 w-full border-t border-line bg-transparent text-lg placeholder:text-ink-faint focus:outline-none"
             />
+            {phoneError(c.phone) && <p className="pb-1 text-xs text-status-alert">{phoneError(c.phone)}</p>}
           </div>
         ))}
       </div>
@@ -358,7 +366,7 @@ function ContactsSheet({ profile, onClose, onSave }: { profile: Profile; onClose
         className="mt-3"
         disabled={!ok || busy}
         onClick={() => {
-          const [first, ...rest] = list.map((c) => ({ name: c.name.trim(), phone: c.phone.trim() }))
+          const [first, ...rest] = list.map((c) => ({ name: c.name.trim(), phone: parsePhone(c.phone) ?? '' }))
           void run({
             emergency_contact_name: first.name,
             emergency_contact_phone: first.phone,
