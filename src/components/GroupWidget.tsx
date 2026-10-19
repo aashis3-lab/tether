@@ -119,7 +119,8 @@ export function FriendList({
         const phone = phones[m.id]
         const where =
           !isMe && myPos && located ? `${formatDistance(distanceM(myPos, m))} ${compass(myPos, m)}` : null
-        const seen = m.status === 'home' ? null : located ? timeAgo(m.last_updated) : 'no location'
+        // "Location off" already says it when the label does.
+        const seen = m.status === 'home' ? null : located ? timeAgo(m.last_updated) : label === 'Location off' ? null : 'no location'
         return (
           <li key={m.id} className="flex items-center gap-1 pr-2 transition-colors hover:bg-ink/[0.03]">
             <button

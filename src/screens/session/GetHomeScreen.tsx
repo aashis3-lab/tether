@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CarIcon, CheckIcon, PhoneIcon, WalkIcon } from '@/components/icons'
+import { CarIcon, CheckIcon, HomeIcon, PhoneIcon, WalkIcon } from '@/components/icons'
 import { Header, Screen } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
 import { HoldButton } from '@/components/HoldButton'
@@ -9,6 +9,7 @@ import { distanceM, formatDistance } from '@/lib/geo'
 import { getRideApp, rideUrl } from '@/lib/ridePref'
 import { errorText } from '@/lib/toast'
 import { supabase } from '@/lib/supabase'
+import { formatClock } from '@/lib/time'
 import type { LatLng } from '@/lib/types'
 import { useSessionCtx } from './context'
 
@@ -20,6 +21,19 @@ const SAFERIDE_PHONE = (import.meta.env.VITE_SAFERIDE_PHONE ?? '').trim() || '+1
 const HOME_CHECK_M = 200
 // "Not yet" on the arrival prompt hides it this long.
 const ARRIVAL_SNOOZE_MS = 10 * 60_000
+
+// Rough door-to-door speeds for the ETA (straight-line distance × detour).
+const DETOUR = 1.3
+const MODE_SPEED: Record<string, number> = { Walking: 1.3, Ride: 8 }
+// A SafeRide / ride-share pickup takes a while before you're moving.
+const PICKUP_MIN: Record<string, number> = { Walking: 0, Ride: 8 }
+
+/** Minutes home by this mode, or null without both locations. */
+function etaMinutes(mode: 'Walking' | 'Ride', from: LatLng | null, home: LatLng | null): number | null {
+  if (!from || !home) return null
+  const sec = (distanceM(from, home) * DETOUR) / MODE_SPEED[mode]
+  return Math.max(1, Math.round(sec / 60 + PICKUP_MIN[mode]))
+}
 
 const store = {
   get(k: string) {
@@ -84,17 +98,21 @@ export function GetHomeScreen() {
     return true
   }
 
-  /** Any Stage 1 choice: heading home (same status as before), then Stage 2. */
+  /**
+   * Any Stage 1 choice: heading home with an ETA, then Stage 2. The ETA
+   * starts arrival tracking (not home by ETA + 15 min -> check-in).
+   */
   function choose(via: string) {
     store.set(stageKey, 'onway')
     setChosen(true)
     setRepicking(false)
+    const mins = etaMinutes(via === 'Walking' ? 'Walking' : 'Ride', myPos, homeLL)
     void update({
       status: 'heading_home',
       status_note: `Heading home • ${via}`,
       activity: 'heading_home',
       activity_until: null,
-      eta: null,
+      eta: mins != null ? new Date(Date.now() + mins * 60_000).toISOString() : null,
       leaving_with: ['solo'],
     })
   }
@@ -180,9 +198,25 @@ export function GetHomeScreen() {
         <>
           <h2 className="text-2xl font-medium tracking-tight">How are you getting home?</h2>
           <p className="mt-1 text-base text-ink-dim">Your group sees you heading home and Tether watches until you arrive.</p>
-          <div className="mt-6 flex flex-col gap-3">
+          {hasHome && (
+            <div className="mt-4 flex items-center gap-3 rounded-2xl bg-surface-high/70 px-4 py-3">
+              <HomeIcon width={20} height={20} className="shrink-0 text-primary-ink" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs text-ink-dim">Home</span>
+                <span className="block truncate text-base">{profile?.home_address ?? 'Saved location'}</span>
+              </span>
+              {awayFromHome != null && <span className="shrink-0 text-xs text-ink-dim">{formatDistance(awayFromHome)}</span>}
+            </div>
+          )}
+          {(!myPos || !homeLL) && (
+            <p className="mt-2 px-1 text-xs text-ink-dim">
+              {!myPos ? 'Turn on location to see an ETA.' : 'Save your home address in Settings to see an ETA.'}
+            </p>
+          )}
+          <div className="mt-4 flex flex-col gap-3">
             <button disabled={busy} onClick={() => choose('Walking')} className={`${bigChoice} disabled:opacity-40`}>
               <WalkIcon width={24} height={24} strokeWidth={2} /> Walking
+              <EtaTag mins={etaMinutes('Walking', myPos, homeLL)} />
             </button>
             <a
               href={rideUrl(getRideApp(), myPos, homeLL, profile?.home_address ?? null)}
@@ -192,6 +226,7 @@ export function GetHomeScreen() {
               className={`${bigChoice}`}
             >
               <CarIcon width={24} height={24} strokeWidth={2} /> Get a ride
+              <EtaTag mins={etaMinutes('Ride', myPos, homeLL)} />
             </a>
             <a href={`tel:${SAFERIDE_PHONE.replace(/[^\d+]/g, '')}`} onClick={() => choose('SafeRide')} className={`${bigChoice}`}>
               <PhoneIcon width={24} height={24} strokeWidth={2} /> Call SafeRide
@@ -201,6 +236,12 @@ export function GetHomeScreen() {
       ) : (
         <>
           <h2 className="text-2xl font-medium tracking-tight">Heading home</h2>
+          {me?.eta && (
+            <p className="mt-2 inline-flex w-fit items-center gap-2 rounded-full bg-secondary-container px-3 py-1 text-sm font-medium text-secondary-on-container">
+              ETA {formatClock(me.eta)}
+              {profile?.home_address ? ` · ${profile.home_address}` : ''}
+            </p>
+          )}
           <p className="mt-1 text-base text-ink-dim">Your friends can see you. Alerts stay on until you're home.</p>
           {others.length > 0 && (
             <p className="mt-3 text-base">
@@ -332,4 +373,10 @@ function HoldRing({ progress }: { progress: number }) {
       />
     </svg>
   )
+}
+
+/** "~25 min" on a transport choice. */
+function EtaTag({ mins }: { mins: number | null }) {
+  if (mins == null) return null
+  return <span className="ml-auto text-sm font-normal text-ink-dim">~{mins} min</span>
 }

@@ -80,7 +80,7 @@ export function SmsCard() {
       <button
         onClick={sendTest}
         disabled={busy}
-        className={`mt-3 ${buttonClass('primary')}`}
+        className={`mt-3 ${buttonClass('tonal')}`}
       >
         {busy ? 'Sending...' : 'Send test text'}
       </button>

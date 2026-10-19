@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { displayPhone, parsePhone, phoneError } from '@/lib/phone'
 import { supabase } from '@/lib/supabase'
 import { geocode, getCurrentPosition } from '@/lib/geo'
 import type { Contact, LatLng, Profile } from '@/lib/types'
@@ -33,6 +34,8 @@ export function ProfileForm({
   )
   // contacts[0] is the primary emergency contact (emergency_contact_* columns);
   // the rest go in additional_emergency_contacts.
+  // Index of the phone field being typed in (its error waits for blur).
+  const [typing, setTyping] = useState<number | null>(null)
   const [contacts, setContacts] = useState<Contact[]>(() => [
     { name: initial?.emergency_contact_name ?? '', phone: initial?.emergency_contact_phone ?? '' },
     ...(initial?.additional_emergency_contacts ?? []),
@@ -46,8 +49,10 @@ export function ProfileForm({
   // Asked once: no home address -> "Add it for directions home?" before saving.
   const [askedHome, setAskedHome] = useState(Boolean(initial))
 
-  const primaryOk = contacts[0].name.trim() && contacts[0].phone.trim()
-  const ready = Boolean(name.trim() && primaryOk)
+  const primaryOk = contacts[0].name.trim() && parsePhone(contacts[0].phone)
+  // Every filled-in phone must be valid before saving.
+  const phonesOk = contacts.every((c) => !c.phone.trim() || parsePhone(c.phone))
+  const ready = Boolean(name.trim() && primaryOk && phonesOk)
 
   function updateContact(i: number, patch: Partial<Contact>) {
     setContacts((cs) => cs.map((c, j) => (j === i ? { ...c, ...patch } : c)))
@@ -97,9 +102,9 @@ export function ProfileForm({
       home_lat: coords?.lat ?? null,
       home_lng: coords?.lng ?? null,
       emergency_contact_name: primary.name.trim() || null,
-      emergency_contact_phone: primary.phone.trim() || null,
+      emergency_contact_phone: parsePhone(primary.phone),
       additional_emergency_contacts: extra
-        .map((c) => ({ name: c.name.trim(), phone: c.phone.trim() }))
+        .map((c) => ({ name: c.name.trim(), phone: parsePhone(c.phone) ?? '' }))
         .filter((c) => c.name && c.phone),
       medical_info: medical.trim() || null,
       avatar_url: avatarUrl,
@@ -179,9 +184,17 @@ export function ProfileForm({
               type="tel"
               value={c.phone}
               onChange={(e) => updateContact(i, { phone: e.target.value })}
+              onFocus={() => setTyping(i)}
+              onBlur={() => {
+                setTyping(null)
+                const e164 = parsePhone(c.phone)
+                if (e164) updateContact(i, { phone: displayPhone(e164) })
+              }}
               required={i === 0}
+              aria-invalid={Boolean(phoneError(c.phone, typing === i))}
               className="block h-11 w-full bg-transparent text-ink placeholder:text-ink-faint focus:outline-none"
             />
+            {phoneError(c.phone, typing === i) && <p className="pb-1 text-xs text-status-alert">{phoneError(c.phone, typing === i)}</p>}
           </div>
         ))}
       </div>

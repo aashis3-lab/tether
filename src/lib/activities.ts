@@ -86,5 +86,6 @@ export function memberStatusLabel(m: Member, now = Date.now()): string {
   }
   if (m.status === 'left_alone') return 'Alone'
   if (m.status === 'separated') return m.status_note || 'Away from group'
-  return 'With group'
+  // Never claim someone is with the group when nobody can see where they are.
+  return m.lat != null && m.lng != null ? 'With group' : 'Location off'
 }

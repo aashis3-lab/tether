@@ -30,7 +30,7 @@ const normalize = (raw: string) => raw.toUpperCase().replace(/[^A-Z0-9]/g, '').s
 /** "Join a party": code or QR, then "Is this your group?" preview, guardian, join. */
 export function JoinSession() {
   const { code: codeParam } = useParams()
-  const { profile } = useAuth()
+  const { profile, userId } = useAuth()
   const navigate = useNavigate()
 
   const contacts = profileContacts(profile)
@@ -41,6 +41,8 @@ export function JoinSession() {
   const [scanning, setScanning] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // Already a member of the previewed party -> offer to open it instead.
+  const [alreadyIn, setAlreadyIn] = useState(false)
 
   const lookup = useCallback(async (c: string) => {
     setError('')
@@ -51,6 +53,24 @@ export function JoinSession() {
     else if (!row) setError('No active party with that code.')
     else setPreview(row)
   }, [])
+
+  useEffect(() => {
+    setAlreadyIn(false)
+    if (!preview || !userId) return
+    let live = true
+    void supabase
+      .from('session_members')
+      .select('id')
+      .eq('session_id', preview.session_id)
+      .eq('user_id', userId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (live) setAlreadyIn(Boolean(data))
+      })
+    return () => {
+      live = false
+    }
+  }, [preview, userId])
 
   // Look it up as soon as the code is complete.
   useEffect(() => {
@@ -121,14 +141,22 @@ export function JoinSession() {
             </>
           )}
           <p className="mt-2 text-ink">
-            {preview.venue_name ? `${preview.venue_name} • ` : 'Until '}
-            {formatClock(preview.end_time)}
+            {preview.venue_name ? `${preview.venue_name} · ` : ''}Ends {formatClock(preview.end_time)}
           </p>
-          <p className="mt-2 text-base text-ink-dim">Stays open until everyone gets home.</p>
         </div>
       )}
 
-      {preview && (
+      {preview && alreadyIn && (
+        <div className="mt-3 rounded-2xl bg-status-calm/10 p-4">
+          <p className="text-lg font-medium">You're already in this party</p>
+          <p className="text-xs text-ink-dim">No need to join again.</p>
+          <button onClick={() => navigate(`/session/${preview.session_id}`)} className={`mt-3 ${buttonClass('primary')}`}>
+            Open party
+          </button>
+        </div>
+      )}
+
+      {preview && !alreadyIn && (
         <button
           onClick={() => setSheet('guardian')}
           className="mt-3 flex min-h-[64px] w-full items-center gap-3 rounded-2xl bg-surface-lowest px-4 py-3 text-left dark:bg-surface-mid"
@@ -145,7 +173,7 @@ export function JoinSession() {
         <ErrorText>{error}</ErrorText>
       </div>
 
-      <div className="mt-auto pt-8">
+      <div className={`mt-auto pt-8 ${alreadyIn ? 'hidden' : ''}`}>
         <button
           disabled={!preview || busy}
           onClick={() => setSheet('join')}

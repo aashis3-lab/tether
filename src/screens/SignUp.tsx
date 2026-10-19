@@ -13,6 +13,7 @@ import {
 import { AlertOverlay } from '@/components/AlertOverlay'
 import { BackTapSteps } from '@/components/BackTapSteps'
 import { isIOS } from '@/lib/device'
+import { parsePhone, phoneError, PHONE_ERROR } from '@/lib/phone'
 import { PermissionsFlow } from '@/components/PermissionsPage'
 import { ProfileForm } from '@/components/ProfileForm'
 import { CodeBoxes } from '@/components/CodeBoxes'
@@ -75,11 +76,15 @@ export function SignUp() {
 
   async function requestCode() {
     unlockAudio()
+    const normalized = parsePhone(phone)
+    if (!normalized) {
+      setError(PHONE_ERROR)
+      return
+    }
     setBusy(true)
     setError('')
     setCode('')
     try {
-      const normalized = normalizePhone(phone)
       setPhone(formatPhone(normalized))
       setMockCode(await sendCode(normalized))
       setCodeSent(true)
@@ -140,10 +145,14 @@ export function SignUp() {
                 setMockCode(null)
               }
             }}
-            placeholder="+1 (555) 123-4567"
+            placeholder="(555) 123-4567"
             required
             autoFocus
+            aria-invalid={Boolean(phoneError(phone))}
           />
+          {phoneError(phone) && phone.replace(/\D/g, '').length >= 10 && (
+            <p className="mt-1.5 px-1 text-xs text-status-alert">{PHONE_ERROR}</p>
+          )}
 
           {codeSent && (
             <div className="mt-5">
@@ -166,7 +175,7 @@ export function SignUp() {
           <div className="mt-auto pt-10">
             <Button
               type="submit"
-              disabled={busy || (codeSent ? code.length !== 6 : phone.replace(/\D/g, '').length < 10)}
+              disabled={busy || (codeSent ? code.length !== 6 : !parsePhone(phone))}
             >
               {busy ? 'One sec…' : codeSent ? 'Verify' : 'Send code'}
             </Button>

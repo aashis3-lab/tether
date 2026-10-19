@@ -7,7 +7,7 @@ import { Button, Header, Screen, Title } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
 import { StartProgress } from './StartFlow'
 import { locationPermission, requestLocation } from '@/lib/device'
-import { distanceM, formatDistance, placeName, reverseGeocode } from '@/lib/geo'
+import { distanceM, formatDistance, geocode, placeName, reverseGeocode } from '@/lib/geo'
 import { updateDraft, useNightDraft, type Destination } from '@/lib/nightDraft'
 import { approximateLocation, nearbyPlacesLive, placesAvailable, recentDestinations, searchPlaces } from '@/lib/places'
 import type { LatLng } from '@/lib/types'
@@ -33,15 +33,20 @@ export function DestinationScreen() {
   const input = useRef<HTMLInputElement>(null)
   const recent = useRef(recentDestinations())
 
-  // Where to bias search and suggestions: you, else your saved home, else
-  // a rough IP-based location.
-  const home =
+  // Where to bias search and suggestions: you, else your saved home address
+  // (geocoded if it has no coordinates yet), and only with no home at all a
+  // rough IP-based location.
+  const savedHome =
     profile?.home_lat != null && profile?.home_lng != null ? { lat: profile.home_lat, lng: profile.home_lng } : null
+  const [geocodedHome, setGeocodedHome] = useState<LatLng | null>(null)
+  const home = savedHome ?? geocodedHome
   const [ipSpot, setIpSpot] = useState<LatLng | null>(null)
   const anchor = here ?? home ?? ipSpot
   useEffect(() => {
-    if (!home) void approximateLocation().then(setIpSpot)
-    // Only needed once, when there's no saved home.
+    if (savedHome) return
+    if (profile?.home_address?.trim()) void geocode(profile.home_address.trim()).then(setGeocodedHome)
+    else void approximateLocation().then(setIpSpot)
+    // Only needed once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -205,10 +210,10 @@ export function DestinationScreen() {
                         </span>
                         <span className="block text-xs text-ink-dim">
                           {locState === 'denied'
-                            ? 'Location is blocked. Turn it on in your phone settings, then tap here.'
+                            ? `Location is blocked${home ? ', showing places near your home' : ''}. Turn it on in your phone settings, then tap here.`
                             : locState === 'off'
-                              ? 'Location is off. Tap to try again.'
-                              : home && locState === 'ask'
+                              ? `Location is off${home ? ', showing places near your home' : ''}. Tap to try again.`
+                              : home
                                 ? 'Showing places near your home for now'
                                 : 'Also suggests places near you'}
                         </span>
@@ -231,8 +236,10 @@ export function DestinationScreen() {
         </>
       )}
 
-      <div className="mt-auto pt-8">
+      {/* Pinned to the bottom like steps 2-4, even under a long suggestion list. */}
+      <div className="sticky bottom-0 -mx-4 mt-auto bg-gradient-to-t from-surface via-surface to-surface/0 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-6">
         <Button
+          big
           disabled={picked.length === 0}
           onClick={() => {
             updateDraft({ destinations: picked })

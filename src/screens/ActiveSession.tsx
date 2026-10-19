@@ -12,14 +12,15 @@ import { LocationFix } from '@/components/LocationFix'
 import { MapView } from '@/components/MapView'
 import { MemberCard } from '@/components/MemberCard'
 import { PinSheet } from '@/components/PinSheet'
-import { Button, ErrorText, Field, IconButton, ListItem, ListSection, StatusChip } from '@/components/ui'
+import { Button, ErrorText, Field, IconButton, ListItem, ListSection, Sheet, StatusChip } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
 import { WalletSheet } from '@/components/WalletSheet'
-import { claimerName } from '@/lib/alerts'
+import { claimerName, raiseAlert } from '@/lib/alerts'
 import { firstName } from '@/lib/format'
-import { placeName, reverseGeocode } from '@/lib/geo'
-import { groupMeta, groupState, TONE_TEXT } from '@/lib/status'
+import { hasLocation, placeName, reverseGeocode } from '@/lib/geo'
+import { groupMeta, groupState, LOCATION_OFF, TONE_TEXT } from '@/lib/status'
 import { supabase } from '@/lib/supabase'
+import { toast, tryOrToast } from '@/lib/toast'
 import { formatClock } from '@/lib/time'
 import { withViewTransition } from '@/lib/transition'
 import type { LatLng } from '@/lib/types'
@@ -79,6 +80,7 @@ export function ActiveSession() {
   }
 
   const awayCount = members.filter((m) => m.status === 'separated' || m.status === 'left_alone').length
+  const darkCount = members.filter((m) => m.status === 'together' && !hasLocation(m)).length
   const chip =
     summary.tone === 'alert'
       ? 'Help needed'
@@ -86,12 +88,41 @@ export function ActiveSession() {
         ? `${awayCount || 1} separated`
         : members.length <= 1
           ? 'Just you'
-          : 'All together'
+          : darkCount
+            ? `${darkCount} location off`
+            : 'All together'
   const venue = pins[0]?.name ?? null
   const partyName = session.name ?? venue ?? 'Night out'
   // Friends with an open alert get a pulsing ring on the map.
   const highlightIds = alerts.filter((a) => !a.resolved && a.member_id !== me?.id).map((a) => a.member_id)
   const openMember = (id: string) => withViewTransition(() => setCardId(id))
+  const helpActive = Boolean(myAlert && myAlert.level !== 'ping')
+
+  // Find me sends straight away. With nobody else in the party there's no one
+  // to ping, so offer to invite friends or alert the guardian instead.
+  const [findBusy, setFindBusy] = useState(false)
+  const [soloOpen, setSoloOpen] = useState(false)
+  async function findMe() {
+    if (!me || findBusy) return
+    if (members.length <= 1) {
+      setSoloOpen(true)
+      return
+    }
+    if (myAlert) {
+      navigate(`${base}/ping`)
+      return
+    }
+    setFindBusy(true)
+    const ok = await tryOrToast("Couldn't send Find me", () => raiseAlert(me.id, 'ping'))
+    setFindBusy(false)
+    if (ok) toast(myPos ? 'Sent to your group with your location.' : `Sent. ${LOCATION_OFF}`, myPos ? 'success' : 'error')
+  }
+  async function alertGuardianInstead() {
+    if (!me) return
+    setSoloOpen(false)
+    const ok = await tryOrToast("Couldn't alert your guardian", () => raiseAlert(me.id, 'alert'))
+    if (ok) navigate(`${base}/ping`)
+  }
 
   return (
     <>
@@ -148,7 +179,7 @@ export function ActiveSession() {
                     {venue && venue !== partyName ? `${venue} · ` : ''}Ends {formatClock(session.end_time)}
                   </span>
                 </button>
-                <StatusChip tone={summary.tone}>{chip}</StatusChip>
+                <StatusChip tone={summary.tone === 'calm' && darkCount ? 'neutral' : summary.tone}>{chip}</StatusChip>
                 <button onClick={() => navigate('/settings')} aria-label="Profile and settings" className="ml-0.5 shrink-0 rounded-full p-1">
                   <Avatar name={profile?.name ?? me?.name ?? '?'} url={profile?.avatar_url} size={32} />
                 </button>
@@ -176,30 +207,6 @@ export function ActiveSession() {
             </div>
           </div>
 
-          {showInvite && snap === 'collapsed' && (
-            <div className="pointer-events-none fixed inset-x-0 z-[860] flex justify-center" style={{ bottom: sheetH + 68 }}>
-              <div className="glass pointer-events-auto mx-3 w-full max-w-[calc(430px-1.5rem)] animate-enter rounded-2xl p-4 shadow-e3">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-container text-primary-on-container">
-                    <UsersIcon width={20} height={20} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-lg font-medium">{justStarted ? 'Your party is live' : 'Just you so far'}</p>
-                    <p className="mt-0.5 text-base text-ink-dim">Invite friends so Tether can watch out for everyone.</p>
-                  </div>
-                  <IconButton label="Dismiss" onClick={() => setInviteDismissed(true)} className="-mr-2 -mt-2">
-                    <XIcon width={18} height={18} />
-                  </IconButton>
-                </div>
-                <div className="mt-2 flex justify-end gap-2">
-                  <button onClick={() => navigate(`${base}/invite`)} className={`${buttonClass('primary')} !w-auto`}>
-                    Invite friends
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Recenter, floating just above the sheet. */}
           {snap !== 'full' && (
             <div className="pointer-events-none fixed inset-x-0 z-[850] flex justify-center" style={{ bottom: sheetH + 12 }}>
@@ -222,6 +229,11 @@ export function ActiveSession() {
             onHeight={setSheetH}
             header={
               <div className="pb-3">
+                {/* Location problems first: nobody can find you without it. */}
+                <div className="-mt-3 mb-2 empty:hidden">
+                  <LocationFix status={gpsStatus} onRetry={retryGps} />
+                </div>
+
                 {/* Peek: who's here, how spread out, how fresh. */}
                 <div className="flex items-center gap-3 pb-3">
                   <AvatarStack members={members} avatars={avatars} />
@@ -236,48 +248,78 @@ export function ActiveSession() {
                   </div>
                 </div>
 
+                {showInvite && (
+                  <div className="mb-2 flex items-center gap-3 rounded-2xl bg-primary-container/60 py-2 pl-3 pr-1">
+                    <UsersIcon width={18} height={18} className="shrink-0 text-primary-on-container" />
+                    <p className="min-w-0 flex-1 text-sm text-primary-on-container">
+                      {justStarted ? 'Your party is live. ' : ''}Invite friends so Tether can watch out for everyone.
+                    </p>
+                    <button
+                      onClick={() => navigate(`${base}/invite`)}
+                      className="flex h-9 shrink-0 items-center rounded-full bg-primary px-3.5 text-sm font-medium text-primary-on"
+                    >
+                      Invite
+                    </button>
+                    <IconButton label="Dismiss" onClick={() => setInviteDismissed(true)} className="!h-9 !w-9">
+                      <XIcon width={16} height={16} />
+                    </IconButton>
+                  </div>
+                )}
+
                 {myAlert && (
                   <button
                     onClick={() => navigate(`${base}/ping`)}
                     className="mb-2 flex w-full items-center gap-2 truncate rounded-xl bg-status-alert/10 px-3 py-2 text-left text-sm font-medium text-status-alert"
                   >
                     <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-status-alert" />
-                    <span className="min-w-0 flex-1 truncate">{myClaimer ? `${firstName(myClaimer)} is on it` : 'Help request sent'}</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {myClaimer
+                        ? `${firstName(myClaimer)} is on it`
+                        : myAlert.level === 'ping'
+                          ? 'Find me sent, waiting for a friend'
+                          : 'Help request sent'}
+                      {!myPos ? ' · your location is off' : ''}
+                    </span>
                     <span className="shrink-0">Open</span>
                   </button>
                 )}
 
                 <div className="grid grid-cols-2 gap-2">
                   <button
-                    onClick={() => navigate(`${base}/ping`)}
-                    className="flex min-h-tap items-center justify-center gap-2 rounded-full bg-findme/25 px-4 text-base font-medium text-ink active:scale-[0.98] dark:bg-findme/20"
+                    onClick={findMe}
+                    disabled={findBusy}
+                    aria-label="Find me: ask your group to come find you"
+                    className="flex h-10 items-center justify-center gap-1.5 rounded-full bg-findme/25 px-3 text-sm font-medium text-ink active:scale-[0.98] disabled:opacity-50 dark:bg-findme/20"
                   >
-                    <SendIcon width={18} height={18} /> Find me
+                    <SendIcon width={16} height={16} /> {findBusy ? 'Sending…' : 'Find me'}
                   </button>
                   <button
                     onClick={() => navigate(`${base}/update`)}
-                    className="flex min-h-tap items-center justify-center gap-2 rounded-full bg-secondary-container px-4 text-base font-medium text-secondary-on-container active:scale-[0.98]"
+                    aria-label="Update your status"
+                    className="flex h-10 items-center justify-center gap-1.5 rounded-full bg-secondary-container px-3 text-sm font-medium text-secondary-on-container active:scale-[0.98]"
                   >
-                    <UserCheckIcon width={18} height={18} /> Status
+                    <UserCheckIcon width={16} height={16} /> Status
                   </button>
                 </div>
 
-                {/* HELP stays big and always visible. */}
+                {/* HELP stays big and always visible: deep pink at rest, red once a help request is open. */}
                 <button
                   onClick={() => navigate(`${base}/help`)}
-                  className="mt-2 flex min-h-[64px] w-full items-center justify-center gap-3 rounded-2xl bg-danger px-4 text-white shadow-e1 active:scale-[0.99]"
+                  className={`mt-2 flex min-h-[64px] w-full items-center justify-center gap-3 rounded-2xl px-4 shadow-e1 active:scale-[0.99] ${
+                    helpActive ? 'bg-danger text-white' : 'bg-primary-container text-primary-on-container'
+                  }`}
                 >
                   <AlertTriangleIcon width={26} height={26} strokeWidth={2} />
                   <span className="text-left">
                     <span className="block text-2xl font-semibold leading-tight tracking-wide">HELP</span>
-                    <span className="block text-xs text-white/85">Alerts your group and guardian</span>
+                    <span className={`block text-xs ${helpActive ? 'text-white/85' : 'opacity-80'}`}>
+                      {helpActive ? 'Help request open · tap to see who knows' : 'Alerts your group and guardian'}
+                    </span>
                   </span>
                 </button>
               </div>
             }
           >
-            <LocationFix status={gpsStatus} onRetry={retryGps} />
-
             <div className="mt-2 flex items-center justify-between">
               <h2 className="text-sm font-medium text-primary-ink">In this group · {members.length}</h2>
               <button onClick={() => navigate(`${base}/invite`)} className="flex h-9 items-center gap-1 rounded-full px-3 text-sm font-medium text-primary-ink">
@@ -352,6 +394,17 @@ export function ActiveSession() {
           onClose={() => withViewTransition(() => setCardId(null))}
         />
       )}
+
+      <Sheet open={soloOpen} onClose={() => setSoloOpen(false)} title="No one else is in your party yet">
+        <p className="text-base text-ink-dim">Find me goes to your friends in the party. Invite them, or alert your guardian now.</p>
+        {!myPos && <p className="mt-3 rounded-xl bg-status-checkin/10 px-4 py-3 text-base font-medium text-status-checkin">{LOCATION_OFF}</p>}
+        <button onClick={() => navigate(`${base}/invite`)} className={`mt-4 ${buttonClass('primary')}`}>
+          <UsersIcon width={18} height={18} /> Invite friends
+        </button>
+        <button onClick={() => void alertGuardianInstead()} className={`mt-2 ${buttonClass('secondary')}`}>
+          Alert my guardian instead
+        </button>
+      </Sheet>
 
       <WalletSheet open={wallet} onClose={() => setWallet(false)} profile={profile} me={me} />
     </>

@@ -8,6 +8,7 @@ import { buttonClass } from '@/components/buttons'
 import { errorText } from '@/lib/toast'
 import { clearDraft, updateDraft, useNightDraft } from '@/lib/nightDraft'
 import { rememberDestinations } from '@/lib/places'
+import { parsePhone } from '@/lib/phone'
 import { profileContacts } from '@/lib/profile'
 import { supabase } from '@/lib/supabase'
 import { defaultEndTime, formatClock } from '@/lib/time'
@@ -22,7 +23,7 @@ export function StartProgress({ step }: { step: 1 | 2 | 3 | 4 }) {
 export function StartWhen() {
   const navigate = useNavigate()
   const draft = useNightDraft()
-  // Until you pick one, the end time is 12 hours from now (not from when the app opened).
+  // Until you pick one, the end time is 9 AM the next morning.
   const [initial] = useState(() => (draft.endTimePicked ? new Date(draft.endTime) : defaultEndTime()))
   const [value, setValue] = useState(initial)
   const [valid, setValid] = useState(true)
@@ -79,9 +80,9 @@ export function StartGuardian() {
       <div className="mt-auto pt-6">
         <Button
           big
-          disabled={!guardian.name.trim() || !guardian.phone.trim()}
+          disabled={!guardian.name.trim() || !parsePhone(guardian.phone)}
           onClick={() => {
-            updateDraft({ guardian: { name: guardian.name.trim(), phone: guardian.phone.trim() } })
+            updateDraft({ guardian: { name: guardian.name.trim(), phone: parsePhone(guardian.phone) ?? guardian.phone } })
             navigate('/start/name')
           }}
         >
@@ -106,13 +107,15 @@ export function StartName() {
 
   const venue = draft.destinations[0]?.name ?? ''
   const day = new Date().toLocaleDateString([], { weekday: 'long' })
+  // What a blank name becomes; the placeholder shows exactly this.
+  const defaultName = venue || `${day} night out`
   const suggestions = [...new Set([venue && `${day} at ${venue}`, venue && `${venue} night`, `${day} night out`, 'Birthday crawl'].filter(Boolean))].slice(0, 4) as string[]
 
   async function start() {
     if (busy || created.current || !draft.guardian) return
     setBusy(true)
     setError('')
-    const finalName = name.trim() || venue || null
+    const finalName = name.trim() || defaultName
     const { data, error: err } = await supabase.rpc('create_session', {
       p_end_time: draft.endTime,
       p_guardian_name: draft.guardian.name,
@@ -144,7 +147,7 @@ export function StartName() {
           setName(e.target.value)
           updateDraft({ name: e.target.value })
         }}
-        placeholder={venue ? `${day} at ${venue}` : `${day} night out`}
+        placeholder={defaultName}
         maxLength={40}
         className={`${inputClass} text-xl`}
         autoFocus
@@ -174,7 +177,7 @@ export function StartName() {
         >
           {busy ? 'Starting the party...' : 'Start the party'}
         </button>
-        {!name.trim() && venue && <p className="mt-2 text-center text-xs text-ink-dim">Leave it blank to call it "{venue}".</p>}
+        {!name.trim() && <p className="mt-2 text-center text-xs text-ink-dim">Leave it blank to call it "{defaultName}".</p>}
       </div>
     </Screen>
   )
