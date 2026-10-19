@@ -2,7 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { Avatar } from '@/components/Avatar'
-import { ChevronRightIcon, HomeIcon, PhoneIcon, ScanIcon, ShieldIcon, UsersIcon } from '@/components/icons'
+import { ChevronRightIcon, HomeIcon, ShieldIcon, UsersIcon } from '@/components/icons'
+import { BottomNav } from '@/components/BottomNav'
 import { KeychainCard } from '@/components/KeychainCard'
 import { ListItem, ListSection, Screen, Spinner, StatusChip } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
@@ -12,7 +13,6 @@ import { firstName } from '@/lib/format'
 import { loadHistory, partyDate, type PastParty } from '@/lib/history'
 import { keychainSupported } from '@/lib/keychain'
 import { supabase } from '@/lib/supabase'
-import { formatClock } from '@/lib/time'
 
 function greeting() {
   const h = new Date().getHours()
@@ -53,7 +53,7 @@ export function Home() {
   const extra = profile?.additional_emergency_contacts?.length ?? 0
 
   return (
-    <Screen>
+    <Screen className="pb-28">
       {/* Top app bar: brand + profile */}
       <div className="-mx-1 flex min-h-[56px] items-center justify-between">
         <div className="flex items-center gap-2 pl-1">
@@ -82,7 +82,7 @@ export function Home() {
           <span className="min-w-0 flex-1">
             <StatusChip tone="calm" className="mb-1">Live now</StatusChip>
             <span className="block truncate text-lg font-medium text-primary-on-container">{openParty.name ?? 'Your party'} is still going</span>
-            <span className="block text-xs text-primary-on-container/80">You're home. Tap to keep an eye on the group.</span>
+            <span className="block text-xs text-primary-on-container/80">You're home. Tap to watch the party until everyone is.</span>
           </span>
           <ChevronRightIcon width={20} height={20} className="text-primary-on-container/70" />
         </button>
@@ -93,16 +93,10 @@ export function Home() {
           <p className="mt-1 text-base text-primary-on-container/80">
             Start one and Tether watches the group for you until everyone's home.
           </p>
-          <div className="mt-4 flex gap-2">
-            <button onClick={() => navigate('/start/where')} className={`${buttonClass('primary')} flex-[1.4] whitespace-nowrap !px-4`}>
-              <UsersIcon width={18} height={18} />
-              Start a night
-            </button>
-            <button onClick={() => navigate('/join')} className={`${buttonClass('secondary')} flex-1 whitespace-nowrap !border-primary-on-container/40 !px-4 !text-primary-on-container`}>
-              <ScanIcon width={18} height={18} />
-              Join
-            </button>
-          </div>
+          <button onClick={() => navigate('/start/where')} className={`mt-4 ${buttonClass('primary')}`}>
+            <UsersIcon width={18} height={18} />
+            Start a party
+          </button>
         </div>
       )}
 
@@ -160,48 +154,23 @@ export function Home() {
           <p className="mt-1 text-base text-ink-dim">Your past parties will show up here.</p>
         </div>
       ) : (
-        <ol className="rounded-2xl bg-surface-lowest px-4 py-2 dark:bg-surface-mid">
-          {history.slice(0, 4).map((p, i, arr) => (
+        <ul className="divide-y divide-line/70 overflow-hidden rounded-2xl bg-surface-lowest dark:bg-surface-mid">
+          {history.slice(0, 3).map((p) => (
             <li key={p.id}>
-              <button onClick={() => navigate(`/history/${p.id}`)} className="flex w-full gap-3 py-2 text-left">
-                <span className="flex flex-col items-center pt-1.5">
-                  <span className={`h-2.5 w-2.5 rounded-full ${p.allHomeBy ? 'bg-status-calm' : 'bg-outline'}`} />
-                  {i < arr.length - 1 && <span className="mt-1 w-px flex-1 bg-outline-variant" />}
-                </span>
-                <span className="min-w-0 flex-1 pb-1">
-                  <span className="flex items-baseline justify-between gap-2">
-                    <span className="truncate text-lg font-medium">{p.name}</span>
-                    <span className="shrink-0 text-xs text-ink-faint">{partyDate(p.date)}</span>
-                  </span>
-                  <span className="block text-xs text-ink-dim">
-                    {p.allHomeBy
-                      ? `Everyone home by ${formatClock(p.allHomeBy)}`
-                      : `${p.homeCount}/${p.members.length} checked in home`}
-                    {p.venues.length > 0 && ` · ${p.venues.slice(0, 2).join(', ')}`}
-                  </span>
-                  <span className="mt-1.5 flex -space-x-1.5">
-                    {p.members.slice(0, 5).map((m) => (
-                      <Avatar key={m.id} name={m.name} url={m.avatar} size={20} ring="ring-2 ring-surface-lowest dark:ring-surface-mid" />
-                    ))}
-                    {p.members.length > 5 && <span className="pl-2.5 text-xs text-ink-dim">+{p.members.length - 5}</span>}
-                  </span>
-                </span>
+              <button
+                onClick={() => navigate(`/history/${p.id}`)}
+                className="flex min-h-[52px] w-full items-center gap-3 px-4 text-left transition-colors hover:bg-ink/[0.04]"
+              >
+                <span className="min-w-0 flex-1 truncate text-lg">{p.name}</span>
+                <span className="shrink-0 text-xs text-ink-dim">{partyDate(p.date)}</span>
               </button>
             </li>
           ))}
-        </ol>
+        </ul>
       )}
 
-      <div className="mt-6 flex justify-center gap-2 pb-4">
-        <button onClick={() => navigate('/settings?edit=contacts')} className="flex h-9 items-center gap-1.5 rounded-lg border border-outline-variant px-3 text-sm font-medium text-ink-dim">
-          <PhoneIcon width={16} height={16} /> Contacts
-        </button>
-        <button onClick={() => navigate('/settings')} className="flex h-9 items-center gap-1.5 rounded-lg border border-outline-variant px-3 text-sm font-medium text-ink-dim">
-          Settings
-        </button>
-      </div>
-
       <WalletSheet open={wallet} onClose={() => setWallet(false)} profile={profile} me={undefined} />
+      <BottomNav />
     </Screen>
   )
 }

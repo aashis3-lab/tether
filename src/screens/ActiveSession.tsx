@@ -1,24 +1,22 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type L from 'leaflet'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { AddPlaceSheet } from '@/components/AddPlaceSheet'
-import { Avatar } from '@/components/Avatar'
-import { BottomSheet, type SheetSnap } from '@/components/BottomSheet'
-import { AvatarStack, FriendList } from '@/components/GroupWidget'
-import { AlertTriangleIcon, CrosshairIcon, GearIcon, HomeIcon, PinIcon, PlusIcon, SendIcon, ShieldIcon, UserCheckIcon, UsersIcon, XIcon } from '@/components/icons'
+import { AlertTriangleIcon, CrosshairIcon, GearIcon, HomeIcon, PinIcon, PlusIcon, SendIcon, ShieldIcon, UserCheckIcon, UsersIcon } from '@/components/icons'
 import { IncomingAlerts } from '@/components/IncomingAlerts'
 import { LocationFix } from '@/components/LocationFix'
 import { MapView } from '@/components/MapView'
 import { MemberCard } from '@/components/MemberCard'
+import { PeoplePanel } from '@/components/PeoplePanel'
 import { PinSheet } from '@/components/PinSheet'
-import { Button, ErrorText, Field, IconButton, ListItem, ListSection, Sheet, StatusChip } from '@/components/ui'
+import { Button, ErrorText, Field, ListItem, Sheet } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
 import { WalletSheet } from '@/components/WalletSheet'
 import { claimerName, raiseAlert } from '@/lib/alerts'
 import { firstName } from '@/lib/format'
-import { hasLocation, placeName, reverseGeocode } from '@/lib/geo'
-import { groupMeta, groupState, LOCATION_OFF, TONE_TEXT } from '@/lib/status'
+import { placeName, reverseGeocode } from '@/lib/geo'
+import { LOCATION_OFF } from '@/lib/status'
 import { supabase } from '@/lib/supabase'
 import { toast, tryOrToast } from '@/lib/toast'
 import { formatClock } from '@/lib/time'
@@ -27,76 +25,59 @@ import type { LatLng } from '@/lib/types'
 import { useSessionCtx } from './session/context'
 
 /**
- * Active party, Google Maps-style: full-screen map, a floating search-bar
- * card with the group status, and a draggable sheet. The peek shows the group
- * summary, Find me / Status and the always-visible HELP button; expanded, it
- * lists everyone.
+ * The party screen. Members who are home (or ended their night) watch the
+ * party read-only; everyone else gets the full party view.
  */
 export function ActiveSession() {
+  const { me } = useSessionCtx()
+  if (me?.status === 'home') return <ObservingView />
+  return <PartyView />
+}
+
+/**
+ * Active party: people panel on top (faces with status badges, tap for the
+ * full list), the map in the middle, and a safety panel at the bottom with
+ * only Find me / Status / HELP, plus a slim bar for Settings, Invite and the
+ * party menu.
+ */
+function PartyView() {
   const { userId } = useAuth()
   const navigate = useNavigate()
   const { session, members, pins, alerts, checkIns, me, profile, myPos, gpsStatus, retryGps, avatars, phones } = useSessionCtx()
   const [cardId, setCardId] = useState<string | null>(null)
   const cardMember = members.find((m) => m.id === cardId) ?? null
-  const [snap, setSnap] = useState<SheetSnap>('collapsed')
-  const [sheetH, setSheetH] = useState(200)
   const [wallet, setWallet] = useState(false)
+  const [menu, setMenu] = useState(false)
   const [recenter, setRecenter] = useState(0)
   const [addOpen, setAddOpen] = useState(false)
   const [picking, setPicking] = useState(false)
   const [editPinId, setEditPinId] = useState<string | null>(null)
-  // Right after starting a party (or while you're the only one in it), nudge
-  // toward inviting friends instead of a separate "Start this night" step.
-  const justStarted = Boolean((useLocation().state as { invitePrompt?: boolean } | null)?.invitePrompt)
-  const [inviteDismissed, setInviteDismissed] = useState(false)
-  const showInvite = !inviteDismissed && (justStarted || members.length === 1)
   const mapRef = useRef<L.Map | null>(null)
-  // Height of the summary bar + banners, so the map fits everyone below it.
   const topRef = useRef<HTMLDivElement>(null)
-  const [topH, setTopH] = useState(140)
-  useEffect(() => {
-    const el = topRef.current
-    if (!el) return
-    const ro = new ResizeObserver(() => setTopH(el.offsetHeight))
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [picking])
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const topH = useHeight(topRef, picking)
+  const bottomH = useHeight(bottomRef, picking)
   const onReady = useCallback((m: L.Map) => {
     mapRef.current = m
   }, [])
 
-  const summary = groupState(members, alerts, me?.id)
   const myAlert = alerts.find((a) => a.member_id === me?.id && a.type === 'manual')
   const myClaimer = myAlert ? claimerName(myAlert, members) : null
   const home =
     profile?.home_lat != null && profile?.home_lng != null ? { lat: profile.home_lat, lng: profile.home_lng } : null
   const base = `/session/${session.id}`
   const editPin = pins.find((p) => p.id === editPinId) ?? null
-
-  function startPicking(at?: LatLng) {
-    setAddOpen(false)
-    setPicking(true)
-    if (at) mapRef.current?.panTo([at.lat, at.lng])
-  }
-
-  const awayCount = members.filter((m) => m.status === 'separated' || m.status === 'left_alone').length
-  const darkCount = members.filter((m) => m.status === 'together' && !hasLocation(m)).length
-  const chip =
-    summary.tone === 'alert'
-      ? 'Help needed'
-      : summary.tone === 'checkin'
-        ? `${awayCount || 1} separated`
-        : members.length <= 1
-          ? 'Just you'
-          : darkCount
-            ? `${darkCount} location off`
-            : 'All together'
-  const venue = pins[0]?.name ?? null
-  const partyName = session.name ?? venue ?? 'Night out'
+  const partyName = session.name ?? pins[0]?.name ?? 'Night out'
   // Friends with an open alert get a pulsing ring on the map.
   const highlightIds = alerts.filter((a) => !a.resolved && a.member_id !== me?.id).map((a) => a.member_id)
   const openMember = (id: string) => withViewTransition(() => setCardId(id))
-  const helpActive = Boolean(myAlert && myAlert.level !== 'ping')
+
+  function startPicking(at?: LatLng) {
+    setAddOpen(false)
+    setMenu(false)
+    setPicking(true)
+    if (at) mapRef.current?.panTo([at.lat, at.lng])
+  }
 
   // Find me sends straight away. With nobody else in the party there's no one
   // to ping, so offer to invite friends or alert the guardian instead.
@@ -126,7 +107,7 @@ export function ActiveSession() {
 
   return (
     <>
-      {/* Full-screen map background. */}
+      {/* Map in the middle (full-screen behind the panels). */}
       <div className="fixed inset-0 z-0 flex justify-center bg-surface">
         <div className="relative isolate h-full w-full max-w-app">
           <MapView
@@ -137,7 +118,7 @@ export function ActiveSession() {
             fitMode="auto"
             fitPaused={picking}
             recenterSignal={recenter}
-            bottomPad={picking ? 0 : sheetH}
+            bottomPad={picking ? 0 : bottomH}
             topPad={picking ? 0 : topH}
             onMemberClick={openMember}
             onLongPress={(p) => startPicking(p)}
@@ -164,108 +145,62 @@ export function ActiveSession() {
         />
       ) : (
         <>
-          {/* Floating search-bar card: party, status chip, venue. */}
+          {/* Top panel: people. */}
           <div className="pointer-events-none fixed inset-x-0 top-0 z-[800] flex justify-center">
             <div ref={topRef} className="w-full max-w-app px-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
-              <div className="glass pointer-events-auto flex min-h-[56px] items-center gap-2 rounded-[28px] py-1.5 pl-3 pr-1.5 shadow-e2">
-                <img src="/icons/logo-mark.png" alt="" className="h-7 w-auto shrink-0" />
-                <button
-                  onClick={() => setSnap(snap === 'collapsed' ? 'half' : 'collapsed')}
-                  aria-label={`${partyName}. ${summary.line}. Show everyone`}
-                  className="min-w-0 flex-1 rounded-xl px-1 text-left"
-                >
-                  <span className="block truncate text-lg font-medium leading-tight">{partyName}</span>
-                  <span className="block truncate text-xs text-ink-dim">
-                    {venue && venue !== partyName ? `${venue} · ` : ''}Ends {formatClock(session.end_time)}
-                  </span>
-                </button>
-                <StatusChip tone={summary.tone === 'calm' && darkCount ? 'neutral' : summary.tone}>{chip}</StatusChip>
-                <button onClick={() => navigate('/settings')} aria-label="Profile and settings" className="ml-0.5 shrink-0 rounded-full p-1">
-                  <Avatar name={profile?.name ?? me?.name ?? '?'} url={profile?.avatar_url} size={32} />
-                </button>
-              </div>
-
-              {/* Google Maps-style chip row. */}
-              <div className="pointer-events-auto -mx-3 mt-2 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none]">
-                <MapChip icon={<ShieldIcon width={16} height={16} />} onClick={() => setWallet(true)}>
-                  Safety card
-                </MapChip>
+              <PeoplePanel
+                title={partyName}
+                endTime={session.end_time}
+                members={members}
+                me={me}
+                checkIns={checkIns}
+                avatars={avatars}
+                phones={phones}
+                myPos={myPos}
+                onInvite={() => navigate(`${base}/invite`)}
+                onMember={openMember}
+              />
+              <div className="pointer-events-auto mt-2 flex items-center gap-2">
                 <MapChip icon={<UsersIcon width={16} height={16} />} onClick={() => navigate(`${base}/invite`)}>
                   Invite
                 </MapChip>
                 <MapChip icon={<PlusIcon width={16} height={16} />} onClick={() => setAddOpen(true)}>
-                  Add place
+                  Add location
                 </MapChip>
-                <MapChip icon={<HomeIcon width={16} height={16} />} onClick={() => navigate(`${base}/home`)}>
-                  Get home
-                </MapChip>
+                <button
+                  onClick={() => navigate(`${base}/home`)}
+                  className="ml-auto flex h-9 shrink-0 items-center rounded-full bg-surface-highest/90 px-3.5 text-sm font-medium text-ink-dim shadow-e1 backdrop-blur active:scale-95"
+                >
+                  End my night
+                </button>
               </div>
-
-              <div className="pointer-events-auto mt-1">
+              <div className="pointer-events-auto mt-2">
                 <IncomingAlerts alerts={alerts} members={members} me={me} userId={userId} position={myPos} mode="banners" />
               </div>
             </div>
           </div>
 
-          {/* Recenter, floating just above the sheet. */}
-          {snap !== 'full' && (
-            <div className="pointer-events-none fixed inset-x-0 z-[850] flex justify-center" style={{ bottom: sheetH + 12 }}>
-              <div className="flex w-full max-w-app justify-end px-4">
-                <button
-                  aria-label="Show everyone"
-                  title="Show everyone"
-                  onClick={() => setRecenter((n) => n + 1)}
-                  className="glass pointer-events-auto flex h-12 w-12 items-center justify-center rounded-2xl text-me shadow-e2 active:scale-95"
-                >
-                  <CrosshairIcon width={22} height={22} />
-                </button>
-              </div>
+          {/* Recenter, floating just above the safety panel. */}
+          <div className="pointer-events-none fixed inset-x-0 z-[850] flex justify-center" style={{ bottom: bottomH + 12 }}>
+            <div className="flex w-full max-w-app justify-end px-4">
+              <button
+                aria-label="Show everyone"
+                title="Show everyone"
+                onClick={() => setRecenter((n) => n + 1)}
+                className="glass pointer-events-auto flex h-12 w-12 items-center justify-center rounded-2xl text-me shadow-e2 active:scale-95"
+              >
+                <CrosshairIcon width={22} height={22} />
+              </button>
             </div>
-          )}
+          </div>
 
-          <BottomSheet
-            snap={snap}
-            onSnap={setSnap}
-            onHeight={setSheetH}
-            header={
-              <div className="pb-3">
-                {/* Location problems first: nobody can find you without it. */}
+          {/* Bottom: the safety panel, then a slim bar. */}
+          <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[900] flex justify-center">
+            <div ref={bottomRef} className="pointer-events-auto w-full max-w-app rounded-t-[28px] bg-surface-low shadow-[0_-2px_12px_rgb(0_0_0/0.12)]">
+              <div className="px-3 pt-3">
                 <div className="-mt-3 mb-2 empty:hidden">
                   <LocationFix status={gpsStatus} onRetry={retryGps} />
                 </div>
-
-                {/* Peek: who's here, how spread out, how fresh. */}
-                <div className="flex items-center gap-3 pb-3">
-                  <AvatarStack members={members} avatars={avatars} />
-                  <div className="min-w-0 flex-1" aria-live="polite">
-                    <p className={`truncate text-lg font-medium ${summary.tone === 'calm' ? 'text-ink' : TONE_TEXT[summary.tone]}`}>
-                      {summary.line}
-                    </p>
-                    <p className="truncate text-xs text-ink-dim">
-                      {groupMeta(members, me, myPos)}
-                      {summary.sub ? ` · ${summary.sub}` : ''}
-                    </p>
-                  </div>
-                </div>
-
-                {showInvite && (
-                  <div className="mb-2 flex items-center gap-3 rounded-2xl bg-primary-container/60 py-2 pl-3 pr-1">
-                    <UsersIcon width={18} height={18} className="shrink-0 text-primary-on-container" />
-                    <p className="min-w-0 flex-1 text-sm text-primary-on-container">
-                      {justStarted ? 'Your party is live. ' : ''}Invite friends so Tether can watch out for everyone.
-                    </p>
-                    <button
-                      onClick={() => navigate(`${base}/invite`)}
-                      className="flex h-9 shrink-0 items-center rounded-full bg-primary px-3.5 text-sm font-medium text-primary-on"
-                    >
-                      Invite
-                    </button>
-                    <IconButton label="Dismiss" onClick={() => setInviteDismissed(true)} className="!h-9 !w-9">
-                      <XIcon width={16} height={16} />
-                    </IconButton>
-                  </div>
-                )}
-
                 {myAlert && (
                   <button
                     onClick={() => navigate(`${base}/ping`)}
@@ -283,94 +218,47 @@ export function ActiveSession() {
                     <span className="shrink-0">Open</span>
                   </button>
                 )}
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={findMe}
+                <div className="grid grid-cols-3 gap-2">
+                  <SafetyButton
+                    label="Find me"
+                    icon={<SendIcon width={28} height={28} strokeWidth={2.25} />}
+                    className="bg-findme text-black"
                     disabled={findBusy}
-                    aria-label="Find me: ask your group to come find you"
-                    className="flex h-10 items-center justify-center gap-1.5 rounded-full bg-findme/25 px-3 text-sm font-medium text-ink active:scale-[0.98] disabled:opacity-50 dark:bg-findme/20"
-                  >
-                    <SendIcon width={16} height={16} /> {findBusy ? 'Sending…' : 'Find me'}
-                  </button>
-                  <button
+                    onClick={() => void findMe()}
+                  />
+                  <SafetyButton
+                    label="Status"
+                    icon={<UserCheckIcon width={28} height={28} strokeWidth={2.25} />}
+                    className="bg-[#1a73e8] text-white"
                     onClick={() => navigate(`${base}/update`)}
-                    aria-label="Update your status"
-                    className="flex h-10 items-center justify-center gap-1.5 rounded-full bg-secondary-container px-3 text-sm font-medium text-secondary-on-container active:scale-[0.98]"
-                  >
-                    <UserCheckIcon width={16} height={16} /> Status
-                  </button>
+                  />
+                  <SafetyButton
+                    label="HELP"
+                    icon={<AlertTriangleIcon width={30} height={30} strokeWidth={2.25} />}
+                    className="bg-danger text-white"
+                    onClick={() => navigate(`${base}/help`)}
+                  />
                 </div>
-
-                {/* HELP stays big and always visible: deep pink at rest, red once a help request is open. */}
-                <button
-                  onClick={() => navigate(`${base}/help`)}
-                  className={`mt-2 flex min-h-[64px] w-full items-center justify-center gap-3 rounded-2xl px-4 shadow-e1 active:scale-[0.99] ${
-                    helpActive ? 'bg-danger text-white' : 'bg-primary-container text-primary-on-container'
-                  }`}
-                >
-                  <AlertTriangleIcon width={26} height={26} strokeWidth={2} />
-                  <span className="text-left">
-                    <span className="block text-2xl font-semibold leading-tight tracking-wide">HELP</span>
-                    <span className={`block text-xs ${helpActive ? 'text-white/85' : 'opacity-80'}`}>
-                      {helpActive ? 'Help request open · tap to see who knows' : 'Alerts your group and guardian'}
-                    </span>
-                  </span>
-                </button>
               </div>
-            }
-          >
-            <div className="mt-2 flex items-center justify-between">
-              <h2 className="text-sm font-medium text-primary-ink">In this group · {members.length}</h2>
-              <button onClick={() => navigate(`${base}/invite`)} className="flex h-9 items-center gap-1 rounded-full px-3 text-sm font-medium text-primary-ink">
-                <PlusIcon width={16} height={16} /> Invite
-              </button>
+              <nav aria-label="Party" className="mt-2 grid grid-cols-3 border-t border-line/70 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1">
+                <BarButton label="Settings" icon={<GearIcon width={22} height={22} />} onClick={() => navigate('/settings')} />
+                <BarButton label="Invite" icon={<UsersIcon width={22} height={22} />} onClick={() => navigate(`${base}/invite`)} />
+                <BarButton label="Party" icon={<MenuIcon />} onClick={() => setMenu(true)} />
+              </nav>
             </div>
-            <FriendList
-              members={members}
-              me={me}
-              checkIns={checkIns}
-              avatars={avatars}
-              phones={phones}
-              myPos={myPos}
-              activeId={cardId}
-              onMemberTap={(m) => openMember(m.id)}
-            />
-
-            <ListSection title="Tonight" className="-mx-1">
-              <ListItem
-                leading={<RowIcon><PlusIcon width={20} height={20} /></RowIcon>}
-                headline="Add a place"
-                supporting={pins.length ? `${pins.length} on the map · or long-press the map` : 'Or long-press the map to drop a pin'}
-                onClick={() => setAddOpen(true)}
-              />
-              <ListItem
-                leading={<RowIcon><ShieldIcon width={20} height={20} /></RowIcon>}
-                headline="Safety card"
-                supporting="Emergency contact, guardian and medical info"
-                onClick={() => setWallet(true)}
-              />
-              <ListItem
-                leading={<RowIcon><GearIcon width={20} height={20} /></RowIcon>}
-                headline="Settings"
-                supporting="Profile, guardian, keychain, appearance"
-                onClick={() => navigate('/settings')}
-              />
-              <ListItem
-                leading={<RowIcon><HomeIcon width={20} height={20} /></RowIcon>}
-                headline="End my night"
-                supporting={`Get home safely · party ends ${formatClock(session.end_time)}`}
-                onClick={() => navigate(`${base}/home`)}
-              />
-            </ListSection>
-
-            <div className="mt-5 flex items-center justify-center gap-1.5 text-xs text-ink-faint">
-              <img src="/icons/logo-mark.png" alt="" className="h-4 w-auto opacity-70" />
-              <span className="font-medium">tether</span>
-            </div>
-          </BottomSheet>
+          </div>
         </>
       )}
+
+      <Sheet open={menu} onClose={() => setMenu(false)} title={partyName}>
+        <div className="-mx-4 divide-y divide-line/70">
+          <ListItem leading={<ShieldIcon width={20} height={20} className="text-primary-ink" />} headline="Safety card" onClick={() => { setMenu(false); setWallet(true) }} />
+          <ListItem leading={<PlusIcon width={20} height={20} className="text-primary-ink" />} headline="Add a location" onClick={() => { setMenu(false); setAddOpen(true) }} />
+          <ListItem leading={<UsersIcon width={20} height={20} className="text-primary-ink" />} headline="Invite friends" onClick={() => navigate(`${base}/invite`)} />
+          <ListItem leading={<HomeIcon width={20} height={20} className="text-primary-ink" />} headline="End my night" onClick={() => navigate(`${base}/home`)} />
+        </div>
+        <p className="mt-3 text-center text-xs text-ink-faint">Party ends {formatClock(session.end_time)}</p>
+      </Sheet>
 
       {addOpen && (
         <AddPlaceSheet
@@ -411,6 +299,129 @@ export function ActiveSession() {
   )
 }
 
+/**
+ * Read-only party for members who are home (or ended their night): the map,
+ * everyone's faces and statuses, live. Only action: call someone.
+ */
+function ObservingView() {
+  const navigate = useNavigate()
+  const { session, members, pins, checkIns, me, avatars, phones } = useSessionCtx()
+  const [cardId, setCardId] = useState<string | null>(null)
+  const cardMember = members.find((m) => m.id === cardId) ?? null
+  const topRef = useRef<HTMLDivElement>(null)
+  const topH = useHeight(topRef, false)
+  const partyName = session.name ?? pins[0]?.name ?? 'the party'
+  const stillOut = members.filter((m) => m.status !== 'home').length
+
+  return (
+    <>
+      <div className="fixed inset-0 z-0 flex justify-center bg-surface">
+        <div className="relative isolate h-full w-full max-w-app">
+          <MapView members={members} pins={pins} myMemberId={me?.id} fitMode="auto" topPad={topH} bottomPad={96} onMemberClick={setCardId} avatars={avatars} />
+        </div>
+      </div>
+
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-[800] flex justify-center">
+        <div ref={topRef} className="w-full max-w-app px-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
+          <PeoplePanel
+            title={<>Watching {partyName}</>}
+            endTime={session.end_time}
+            members={members}
+            me={me}
+            checkIns={checkIns}
+            avatars={avatars}
+            phones={phones}
+            myPos={null}
+            onMember={setCardId}
+          />
+        </div>
+      </div>
+
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[900] flex justify-center">
+        <div className="pointer-events-auto w-full max-w-app rounded-t-[28px] bg-surface-low px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-2px_12px_rgb(0_0_0/0.12)]">
+          <p className="text-center text-sm text-ink-dim">
+            You're home ✓ · {stillOut ? `${stillOut} still out` : 'everyone is home'}
+          </p>
+          <button onClick={() => navigate('/', { replace: true })} className={`mt-3 ${buttonClass('secondary')}`}>
+            Leave party view
+          </button>
+        </div>
+      </div>
+
+      {cardMember && (
+        <MemberCard
+          member={cardMember}
+          avatar={avatars[cardMember.id] ?? null}
+          phone={phones[cardMember.id] ?? null}
+          myPos={null}
+          isMe={cardMember.id === me?.id}
+          onClose={() => setCardId(null)}
+        />
+      )}
+    </>
+  )
+}
+
+/** Live height of an element (0 when hidden), for map padding. */
+function useHeight(ref: React.RefObject<HTMLElement>, dep: unknown) {
+  const [h, setH] = useState(0)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    setH(el.offsetHeight)
+    const ro = new ResizeObserver(() => setH(el.offsetHeight))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref, dep])
+  return h
+}
+
+/** Big, bright, one-tap safety button: icon + one word. */
+function SafetyButton({
+  label,
+  icon,
+  className,
+  onClick,
+  disabled,
+}: {
+  label: string
+  icon: ReactNode
+  className: string
+  onClick: () => void
+  disabled?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex min-h-[92px] flex-col items-center justify-center gap-1.5 rounded-[22px] shadow-e1 active:scale-[0.97] disabled:opacity-60 ${className}`}
+    >
+      {icon}
+      <span className="text-lg font-bold tracking-wide">{label}</span>
+    </button>
+  )
+}
+
+/** Slim bottom-bar item, same style as the home tab bar. */
+function BarButton({ label, icon, onClick }: { label: string; icon: ReactNode; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="flex min-h-[48px] flex-col items-center justify-center gap-0.5 text-ink-dim">
+      {icon}
+      <span className="text-xs font-medium">{label}</span>
+    </button>
+  )
+}
+
+function MenuIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
+      <circle cx="5" cy="12" r="1.5" />
+      <circle cx="12" cy="12" r="1.5" />
+      <circle cx="19" cy="12" r="1.5" />
+    </svg>
+  )
+}
+
 /** Translucent chip floating over the map. */
 function MapChip({ icon, children, onClick }: { icon: ReactNode; children: ReactNode; onClick: () => void }) {
   return (
@@ -422,10 +433,6 @@ function MapChip({ icon, children, onClick }: { icon: ReactNode; children: React
       {children}
     </button>
   )
-}
-
-function RowIcon({ children }: { children: ReactNode }) {
-  return <span className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary-container/70 text-secondary-on-container">{children}</span>
 }
 
 /**

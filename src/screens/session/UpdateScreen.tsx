@@ -3,21 +3,22 @@ import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
 import { BatteryIcon, CarIcon, CheckCircleIcon, HomeIcon, UserIcon, UsersIcon } from '@/components/icons'
 import { Header, Button, ErrorText, Screen, Sheet, Title, inputClass } from '@/components/ui'
-import { buttonClass } from '@/components/buttons'
-import { ACTIVITIES, STATUS_CHOICES, activityTimeLeft, liveActivity, type ActivityDef, type ActivityKey } from '@/lib/activities'
+import { ACTIVITIES, activityTimeLeft, liveActivity, type ActivityDef, type ActivityKey } from '@/lib/activities'
 import { raiseAlert } from '@/lib/alerts'
 import { firstName } from '@/lib/format'
 import { errorText } from '@/lib/toast'
 import { supabase } from '@/lib/supabase'
 import { useSessionCtx } from './context'
 
-/** Icon and one-line explanation for each status in the list. */
-const STATUS_META: Partial<Record<ActivityKey, { icon: ReactNode; desc: string }>> = {
-  heading_home: { icon: <HomeIcon width={20} height={20} />, desc: 'Pick how, see your ETA; Tether watches until you arrive' },
-  leaving_new: { icon: <UserIcon width={20} height={20} />, desc: "Someone outside the group; check-ins stay on" },
-  leaving_friend: { icon: <UsersIcon width={20} height={20} />, desc: 'With someone from your group; keeps alerts quiet' },
-  ride: { icon: <CarIcon width={20} height={20} />, desc: 'Waiting on a car' },
-  phone_dying: { icon: <BatteryIcon width={20} height={20} />, desc: 'A friend is asked to stay with you' },
+/** The big Status tiles: icon + 1-2 words, bright when picked. */
+const TILES: ActivityKey[] = ['heading_home', 'leaving_friend', 'ride', 'phone_dying', 'leaving_new', 'back']
+const TILE: Record<string, { label: string; icon: ReactNode; on: string; ink: string }> = {
+  heading_home: { label: 'Heading home', icon: <HomeIcon width={34} height={34} strokeWidth={2} />, on: 'bg-[#1a73e8] text-white', ink: 'text-me' },
+  leaving_friend: { label: 'Leaving with friend', icon: <UsersIcon width={34} height={34} strokeWidth={2} />, on: 'bg-primary text-primary-on', ink: 'text-primary-ink' },
+  ride: { label: 'Getting a ride', icon: <CarIcon width={34} height={34} strokeWidth={2} />, on: 'bg-secondary text-black', ink: 'text-secondary-ink' },
+  phone_dying: { label: 'Phone dying', icon: <BatteryIcon width={34} height={34} strokeWidth={2} />, on: 'bg-danger text-white', ink: 'text-status-alert' },
+  leaving_new: { label: 'Someone new', icon: <UserIcon width={34} height={34} strokeWidth={2} />, on: 'bg-findme text-black', ink: 'text-status-checkin' },
+  back: { label: 'Back with group', icon: <CheckCircleIcon width={34} height={34} strokeWidth={2} />, on: 'bg-safe text-black', ink: 'text-status-calm' },
 }
 
 /**
@@ -93,46 +94,33 @@ export function UpdateScreen() {
     <Screen>
       <Header title="Status" back={back} />
       <Title>What's happening?</Title>
-      <p className="mt-1 text-base text-ink-dim">
-        {current ? (
-          <>
-            Now: <span className="font-medium text-ink">{me?.status_note || current.label}</span>
-            {me && activityTimeLeft(me) && <span className="ml-2 rounded-full bg-secondary-container px-2 py-0.5 text-xs text-secondary-on-container">{activityTimeLeft(me)} left</span>}
-          </>
-        ) : (
-          'Pick one. It replaces your last update.'
-        )}
-      </p>
+      {current && (
+        <p className="mt-1 text-base text-ink-dim">
+          Now: <span className="font-medium text-ink">{me?.status_note || current.label}</span>
+          {me && activityTimeLeft(me) && <span className="ml-2 rounded-full bg-secondary-container px-2 py-0.5 text-xs text-secondary-on-container">{activityTimeLeft(me)} left</span>}
+        </p>
+      )}
 
-      <div className="mt-5 divide-y divide-line/70 overflow-hidden rounded-2xl bg-surface-lowest dark:bg-surface-mid" role="radiogroup" aria-label="Your status">
-        {STATUS_CHOICES.map((k) => {
+      <div className="mt-5 grid grid-cols-2 gap-3" role="radiogroup" aria-label="Your status">
+        {TILES.map((k) => {
           const a = def(k)
-          const active = current?.key === a.key
-          const meta = STATUS_META[a.key]
+          const t = TILE[k]
+          const active = k === 'back' ? !current : current?.key === a.key
           return (
             <button
-              key={a.key}
+              key={k}
               role="radio"
               aria-checked={active}
-              aria-label={`Set status: ${a.label}`}
+              aria-label={`Set status: ${t.label}`}
               disabled={busy !== null}
               onClick={() => tap(a)}
-              className={`flex min-h-[64px] w-full items-center gap-4 px-4 py-3 text-left transition-colors disabled:opacity-40 ${
-                active ? 'bg-primary-container/50' : 'hover:bg-ink/[0.04]'
+              className={`relative flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[24px] border-2 p-3 text-center transition active:scale-[0.97] disabled:opacity-50 ${
+                active ? `${t.on} border-transparent shadow-e2` : 'border-transparent bg-surface-lowest shadow-e1 dark:bg-surface-mid'
               }`}
             >
-              <span
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                  a.key === 'leaving_new' ? 'bg-status-checkin/15 text-status-checkin' : 'bg-secondary-container/70 text-secondary-on-container'
-                }`}
-              >
-                {meta?.icon}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-lg">{busy === a.key ? 'Saving…' : a.label}</span>
-                {meta && <span className="block text-xs text-ink-dim">{meta.desc}</span>}
-              </span>
-              {active && <CheckCircleIcon width={20} height={20} className="shrink-0 text-primary-ink" />}
+              {active && <CheckCircleIcon width={20} height={20} className="absolute right-3 top-3" />}
+              <span className={active ? '' : t.ink}>{t.icon}</span>
+              <span className="text-lg font-semibold leading-tight">{busy === k ? 'Saving…' : t.label}</span>
             </button>
           )
         })}
@@ -142,32 +130,17 @@ export function UpdateScreen() {
         <ErrorText>{error}</ErrorText>
       </div>
 
-      {/* Room so the pinned bar never covers the last tile. */}
-      <div className={sent ? 'h-64' : 'h-28'} aria-hidden="true" />
-
-      {/* Pinned to the bottom: confirmation (after an update) and Back with group. */}
-      <div className="fixed inset-x-0 bottom-0 z-[900] flex justify-center">
-        <div className="w-full max-w-app bg-gradient-to-t from-surface via-surface to-surface/0 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-6">
-          {sent && (
-            <div className="mb-3 animate-enter rounded-xl bg-inverse p-4 text-inverse-on shadow-e3" aria-live="polite">
-              <p className="text-xs opacity-80">Sent to your group</p>
-              <p className="text-lg font-medium">{sent}</p>
-              <button onClick={() => navigate(back)} className="mt-3 min-h-tap w-full rounded-full bg-primary text-base font-medium text-primary-on">
-                Back to map
-              </button>
-            </div>
-          )}
-          <button
-            disabled={busy !== null}
-            onClick={() => tap(def('back'))}
-            aria-pressed={!current}
-            aria-label="Set status: Back with group"
-            className={buttonClass('safe', true)}
-          >
-            <CheckCircleIcon width={20} height={20} /> {busy === 'back' ? 'Saving…' : 'Back with group'}
-          </button>
+      {sent && (
+        <div className="fixed inset-x-0 bottom-0 z-[900] flex justify-center px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+          <div className="w-full max-w-[calc(430px-2rem)] animate-enter rounded-xl bg-inverse p-4 text-inverse-on shadow-e3" aria-live="polite">
+            <p className="text-xs opacity-80">Sent to your group</p>
+            <p className="text-lg font-medium">{sent}</p>
+            <button onClick={() => navigate(back)} className="mt-3 min-h-tap w-full rounded-full bg-primary text-base font-medium text-primary-on">
+              Back to map
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Leaving with a friend: pick from the group (quiets left-alone). */}
       <Sheet open={picker === 'leaving_friend'} onClose={() => setPicker(null)} title="Leaving with…">

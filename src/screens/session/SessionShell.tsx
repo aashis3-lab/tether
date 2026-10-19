@@ -75,7 +75,7 @@ export function SessionShell() {
   return (
     <>
       <Outlet context={ctx} />
-      <IncomingAlerts alerts={alerts} members={members} me={me} userId={userId} position={myPos} mode="overlay" />
+      <IncomingAlerts alerts={alerts} members={members} me={me} userId={userId} position={myPos} mode="overlay" avatars={avatars} phones={phones} />
       {me && myCheckIn && !myAlert && <CheckInOverlay key={myCheckIn.id} checkIn={myCheckIn} me={me} />}
     </>
   )

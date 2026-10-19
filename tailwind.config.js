@@ -103,7 +103,7 @@ export default {
         '6xl': ['3rem', { lineHeight: '3.5rem' }],
       },
       fontFamily: {
-        sans: ['"Google Sans"', '"Google Sans Flex"', '"Roboto"', '"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
       },
       keyframes: {
         enter: {

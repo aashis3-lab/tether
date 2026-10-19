@@ -106,7 +106,7 @@
 
   body {
     margin: 0;
-    font-family: 'Google Sans', 'Google Sans Flex', 'Roboto', 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     font-size: 0.875rem;
     line-height: 1.25rem;
     color: var(--app-fg);

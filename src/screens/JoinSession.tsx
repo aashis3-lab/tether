@@ -5,6 +5,7 @@ import { Avatar } from '@/components/Avatar'
 import { GuardianSheet } from '@/components/GuardianSheet'
 import { ChevronRightIcon, QrIcon } from '@/components/icons'
 import { QrScanner } from '@/components/QrScanner'
+import { BottomNav } from '@/components/BottomNav'
 import { Header, ErrorText, Screen, Title, inputClass } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
 import { firstName, formatCode } from '@/lib/format'
@@ -100,8 +101,8 @@ export function JoinSession() {
   const host = preview ? firstName(preview.creator_name) : ''
 
   return (
-    <Screen>
-      <Header title="Join" back="/" />
+    <Screen className="pb-28">
+      <Header title="Join" />
       <Title>Join a party</Title>
 
       <label className="mt-5 block">
@@ -208,6 +209,7 @@ export function JoinSession() {
           onClose={() => setScanning(false)}
         />
       )}
+      <BottomNav />
     </Screen>
   )
 }

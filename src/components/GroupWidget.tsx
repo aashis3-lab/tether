@@ -2,10 +2,10 @@ import { useNow } from '@/hooks/useNow'
 import { activityTimeLeft, liveActivity, memberStatusLabel } from '@/lib/activities'
 import { ruleMs } from '@/lib/alerts'
 import { firstName } from '@/lib/format'
-import { compass, distanceM, formatDistance, hasLocation, mapsLink, timeAgo } from '@/lib/geo'
+import { compass, distanceM, formatDistance, hasLocation, timeAgo } from '@/lib/geo'
 import type { CheckIn, LatLng, Member } from '@/lib/types'
 import { Avatar } from './Avatar'
-import { BatteryIcon, NavigateIcon, PhoneIcon } from './icons'
+import { BatteryIcon, ChatIcon, PhoneIcon } from './icons'
 
 type Attention = 'red' | 'yellow' | null
 
@@ -162,15 +162,13 @@ export function FriendList({
                     <PhoneIcon width={19} height={19} />
                   </a>
                 ) : null}
-                {located && (
+                {phone && (
                   <a
-                    href={mapsLink(m)}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={`Directions to ${firstName(m.name)}`}
+                    href={`sms:${digits(phone)}`}
+                    aria-label={`Text ${firstName(m.name)}`}
                     className="flex h-10 w-10 items-center justify-center rounded-full text-primary-ink hover:bg-primary/10"
                   >
-                    <NavigateIcon width={18} height={18} />
+                    <ChatIcon width={18} height={18} />
                   </a>
                 )}
               </span>
