@@ -208,6 +208,11 @@ export function GetHomeScreen() {
               {awayFromHome != null && <span className="shrink-0 text-xs text-ink-dim">{formatDistance(awayFromHome)}</span>}
             </div>
           )}
+          {(!myPos || !homeLL) && (
+            <p className="mt-2 px-1 text-xs text-ink-dim">
+              {!myPos ? 'Turn on location to see an ETA.' : 'Save your home address in Settings to see an ETA.'}
+            </p>
+          )}
           <div className="mt-4 flex flex-col gap-3">
             <button disabled={busy} onClick={() => choose('Walking')} className={`${bigChoice} disabled:opacity-40`}>
               <WalkIcon width={24} height={24} strokeWidth={2} /> Walking

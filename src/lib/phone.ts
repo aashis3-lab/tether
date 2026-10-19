@@ -26,7 +26,13 @@ export function displayPhone(phone: string | null | undefined): string {
 
 export const PHONE_ERROR = 'Enter a 10-digit US number, or + and the country code.'
 
-/** Inline error for a phone field: empty string when it's fine (or still empty). */
-export function phoneError(raw: string | null | undefined): string {
-  return (raw ?? '').trim() && !parsePhone(raw) ? PHONE_ERROR : ''
+/**
+ * Inline error for a phone field: empty when it's fine or still empty. While
+ * the person is typing (`typing`), it waits until there are 10+ digits.
+ */
+export function phoneError(raw: string | null | undefined, typing = false): string {
+  const s = (raw ?? '').trim()
+  if (!s || parsePhone(s)) return ''
+  if (typing && s.replace(/\D/g, '').length < 10) return ''
+  return PHONE_ERROR
 }

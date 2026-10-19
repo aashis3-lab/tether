@@ -34,6 +34,8 @@ export function ProfileForm({
   )
   // contacts[0] is the primary emergency contact (emergency_contact_* columns);
   // the rest go in additional_emergency_contacts.
+  // Index of the phone field being typed in (its error waits for blur).
+  const [typing, setTyping] = useState<number | null>(null)
   const [contacts, setContacts] = useState<Contact[]>(() => [
     { name: initial?.emergency_contact_name ?? '', phone: initial?.emergency_contact_phone ?? '' },
     ...(initial?.additional_emergency_contacts ?? []),
@@ -182,15 +184,17 @@ export function ProfileForm({
               type="tel"
               value={c.phone}
               onChange={(e) => updateContact(i, { phone: e.target.value })}
+              onFocus={() => setTyping(i)}
               onBlur={() => {
+                setTyping(null)
                 const e164 = parsePhone(c.phone)
                 if (e164) updateContact(i, { phone: displayPhone(e164) })
               }}
               required={i === 0}
-              aria-invalid={Boolean(phoneError(c.phone))}
+              aria-invalid={Boolean(phoneError(c.phone, typing === i))}
               className="block h-11 w-full bg-transparent text-ink placeholder:text-ink-faint focus:outline-none"
             />
-            {phoneError(c.phone) && <p className="pb-1 text-xs text-status-alert">{phoneError(c.phone)}</p>}
+            {phoneError(c.phone, typing === i) && <p className="pb-1 text-xs text-status-alert">{phoneError(c.phone, typing === i)}</p>}
           </div>
         ))}
       </div>

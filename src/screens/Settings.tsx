@@ -303,6 +303,8 @@ function useSaver(onSave: SaveFn) {
 }
 
 function ContactsSheet({ profile, onClose, onSave }: { profile: Profile; onClose: () => void; onSave: SaveFn }) {
+  // Index of the phone field being typed in (its error waits for blur).
+  const [typing, setTyping] = useState<number | null>(null)
   const [list, setList] = useState<Contact[]>(() => {
     const c = profileContacts(profile).map((x) => ({ ...x, phone: displayPhone(x.phone) }))
     return c.length ? c : [{ name: '', phone: '' }]
@@ -340,14 +342,16 @@ function ContactsSheet({ profile, onClose, onSave }: { profile: Profile; onClose
               type="tel"
               value={c.phone}
               onChange={(e) => set(i, { phone: e.target.value })}
+              onFocus={() => setTyping(i)}
               onBlur={() => {
+                setTyping(null)
                 const e164 = parsePhone(c.phone)
                 if (e164) set(i, { phone: displayPhone(e164) })
               }}
-              aria-invalid={Boolean(phoneError(c.phone))}
+              aria-invalid={Boolean(phoneError(c.phone, typing === i))}
               className="block h-11 w-full border-t border-line bg-transparent text-lg placeholder:text-ink-faint focus:outline-none"
             />
-            {phoneError(c.phone) && <p className="pb-1 text-xs text-status-alert">{phoneError(c.phone)}</p>}
+            {phoneError(c.phone, typing === i) && <p className="pb-1 text-xs text-status-alert">{phoneError(c.phone, typing === i)}</p>}
           </div>
         ))}
       </div>

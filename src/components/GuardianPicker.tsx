@@ -21,6 +21,7 @@ export function GuardianPicker({
   heading?: boolean
 }) {
   const matches = (c: Contact) => c.name === value.name && c.phone === value.phone
+  const [phoneFocused, setPhoneFocused] = useState(false)
   const [custom, setCustom] = useState(contacts.length === 0 || !contacts.some(matches))
 
   return (
@@ -91,13 +92,17 @@ export function GuardianPicker({
               placeholder="(555) 123-4567"
               value={value.phone}
               onChange={(e) => onChange({ ...value, phone: e.target.value })}
+              onFocus={() => setPhoneFocused(true)}
               onBlur={() => {
+                setPhoneFocused(false)
                 const e164 = parsePhone(value.phone)
                 if (e164) onChange({ ...value, phone: displayPhone(e164) })
               }}
-              aria-invalid={Boolean(phoneError(value.phone))}
+              aria-invalid={Boolean(phoneError(value.phone, phoneFocused))}
             />
-            {phoneError(value.phone) && <p className="mt-1.5 px-1 text-xs text-status-alert">{phoneError(value.phone)}</p>}
+            {phoneError(value.phone, phoneFocused) && (
+              <p className="mt-1.5 px-1 text-xs text-status-alert">{phoneError(value.phone, phoneFocused)}</p>
+            )}
           </div>
         </div>
       )}
