@@ -20,9 +20,3 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     },
   },
 })
-
-/**
- * Multiplies real-world rule timers (minutes) down to demo-friendly seconds.
- * Set VITE_DEMO_SPEED=60 to turn "10 min" into "10 sec" during a pitch.
- */
-export const DEMO_SPEED = Number(import.meta.env.VITE_DEMO_SPEED ?? '1')

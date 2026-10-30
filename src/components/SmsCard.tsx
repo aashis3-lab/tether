@@ -13,15 +13,17 @@ interface SmsRow {
   created_at: string
 }
 
-// Raw provider errors (e.g. Twilio codes) are for developers only.
-const devError = (raw: string) => (import.meta.env.DEV ? raw : 'Text failed. Try again.')
+// Server-side failure reasons are written for people ("Mom isn't on Tether
+// yet"); only unexpected client errors stay developer-only.
+const devError = (raw: string) => (import.meta.env.DEV ? raw : 'Sending failed. Try again.')
 
 const POLL_MS = 1500
 const POLL_FOR_MS = 20_000
 
 /**
- * Settings -> Text messages: "Send test text" to your guardian, and the
- * latest texts about you with their real delivery result or failure reason.
+ * Settings -> Guardian alerts: "Send test alert" to your guardian (a Tether
+ * notification), and the latest ones about you with their real result or
+ * failure reason.
  */
 export function SmsCard() {
   const [rows, setRows] = useState<SmsRow[]>([])
@@ -65,7 +67,7 @@ export function SmsCard() {
         break
       }
       if (row?.status === 'failed') {
-        setNote({ kind: 'error', text: devError(row.error ?? 'Send failed.') })
+        setNote({ kind: 'error', text: row.error ?? 'Send failed.' })
         break
       }
       await new Promise((r) => setTimeout(r, POLL_MS))
@@ -76,14 +78,14 @@ export function SmsCard() {
 
   return (
     <div className="mt-5 rounded-xl2 bg-bg-card p-4">
-      <p className="text-sm font-bold uppercase tracking-wide text-accent-orange">Text messages</p>
-      <p className="mt-1 text-base text-ink-dim">Your guardian gets a text when you press HELP, when an alert reaches them, and when everyone is home.</p>
+      <p className="text-sm font-bold uppercase tracking-wide text-accent-orange">Guardian alerts</p>
+      <p className="mt-1 text-base text-ink-dim">Your guardian gets a Tether notification when you press HELP, when an alert reaches them, and when everyone is home.</p>
       <button
         onClick={sendTest}
         disabled={busy}
         className={`mt-3 ${buttonClass('primary')}`}
       >
-        {busy ? 'Sending...' : 'Send test text'}
+        {busy ? 'Sending...' : 'Send test alert'}
       </button>
       {note && (
         <p
@@ -109,7 +111,7 @@ export function SmsCard() {
                 </span>
               </p>
               <p className="truncate text-ink-dim">{r.body}</p>
-              {r.status === 'failed' && <p className="text-status-alert">{devError(r.error ?? 'Send failed.')}</p>}
+              {r.status === 'failed' && <p className="text-status-alert">{r.error ?? 'Send failed.'}</p>}
             </li>
           ))}
         </ul>

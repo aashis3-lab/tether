@@ -10,16 +10,7 @@ import { formatPhone } from '@/auth/phoneAuth'
 import { firstName } from '@/lib/format'
 import { useSessionCtx } from './context'
 
-/**
- * DEMO_SAFE_911 (VITE_DEMO_SAFE_911): ON unless set to "false". When ON, the
- * 911 button dials VITE_DEMO_911_NUMBER (e.g. a teammate) and says "Demo
- * mode". When OFF it dials real 911. A production build with no test number
- * set always dials real 911; only dev builds show the setup hint instead.
- */
-const SAFE_911 = import.meta.env.VITE_DEMO_SAFE_911 !== 'false'
-const DEMO_NUMBER = (import.meta.env.VITE_DEMO_911_NUMBER ?? '').trim()
-const DIALS_DEMO = SAFE_911 && Boolean(DEMO_NUMBER)
-const EMERGENCY_NUMBER = DIALS_DEMO ? DEMO_NUMBER : SAFE_911 && import.meta.env.DEV ? '' : '911'
+const EMERGENCY_NUMBER = '911'
 
 /** Seconds to cancel before HELP actually alerts anyone. */
 const CANCEL_SECONDS = 5
@@ -112,53 +103,35 @@ export function HelpScreen() {
 
       <div className="mt-5 flex flex-1 flex-col gap-4">
         {/* Call 911 first and biggest: press and hold 2 s (a ring fills), then confirm. */}
-        {EMERGENCY_NUMBER ? (
-          <HoldButton
-            ariaLabel="Call 911. Press and hold for 2 seconds."
-            onComplete={() => setConfirm911(true)}
-            className="flex min-h-[250px] w-full flex-[1.6] flex-col items-center justify-center rounded-3xl bg-danger px-4 text-center text-white active:scale-[0.99]"
-          >
-            {(progress) => (
-              <span className="flex flex-col items-center gap-2">
-                <span className="relative flex h-24 w-24 items-center justify-center">
-                  <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden="true">
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="8" />
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="45"
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="8"
-                      strokeLinecap="round"
-                      pathLength={100}
-                      strokeDasharray={`${progress * 100} 100`}
-                    />
-                  </svg>
-                  <PhoneIcon width={44} height={44} strokeWidth={2.2} />
-                </span>
-                <span className="text-5xl font-black">Call 911</span>
-                <span className="text-lg font-semibold">{progress > 0 ? 'Keep holding…' : 'Press and hold 2 seconds'}</span>
-                {DIALS_DEMO && (
-                  <span className="mt-1 rounded-full bg-black/30 px-3 py-1 text-sm font-bold uppercase tracking-wide">
-                    Demo mode · dials {DEMO_NUMBER}
-                  </span>
-                )}
+        <HoldButton
+          ariaLabel="Call 911. Press and hold for 2 seconds."
+          onComplete={() => setConfirm911(true)}
+          className="flex min-h-[250px] w-full flex-[1.6] flex-col items-center justify-center rounded-3xl bg-danger px-4 text-center text-white active:scale-[0.99]"
+        >
+          {(progress) => (
+            <span className="flex flex-col items-center gap-2">
+              <span className="relative flex h-24 w-24 items-center justify-center">
+                <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden="true">
+                  <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="8" />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="45"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    pathLength={100}
+                    strokeDasharray={`${progress * 100} 100`}
+                  />
+                </svg>
+                <PhoneIcon width={44} height={44} strokeWidth={2.2} />
               </span>
-            )}
-          </HoldButton>
-        ) : (
-          // Only reachable in dev builds (production always has a number to dial).
-          import.meta.env.DEV && (
-            <div className="flex min-h-[250px] flex-[1.6] flex-col items-center justify-center rounded-3xl border-2 border-dashed border-status-alert/60 p-4 text-center">
-              <p className="text-2xl font-black text-status-alert">Call 911</p>
-              <p className="mt-2 text-ink-dim">
-                Demo mode is on but no test number is set. Add <span className="font-mono">VITE_DEMO_911_NUMBER</span> to
-                .env (or set <span className="font-mono">VITE_DEMO_SAFE_911=false</span> to dial real 911).
-              </p>
-            </div>
-          )
-        )}
+              <span className="text-5xl font-black">Call 911</span>
+              <span className="text-lg font-semibold">{progress > 0 ? 'Keep holding…' : 'Press and hold 2 seconds'}</span>
+            </span>
+          )}
+        </HoldButton>
 
         {/* Call guardian: second and smaller, plain tap, real tel: link. */}
         {guardianPhone ? (
@@ -200,7 +173,7 @@ export function HelpScreen() {
       )}
 
       {/* "Are you sure?" after the hold, so 911 is never one slip away. */}
-      {confirm911 && EMERGENCY_NUMBER && (
+      {confirm911 && (
         <div className="fixed inset-0 z-[2000] flex items-end justify-center bg-black/80" onClick={() => setConfirm911(false)}>
           <div
             className="w-full max-w-app rounded-t-3xl bg-bg-raised p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]"

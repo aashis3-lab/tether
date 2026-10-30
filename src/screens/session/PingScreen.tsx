@@ -1,8 +1,8 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { CheckIcon, SendIcon, ShieldAlertIcon } from '@/components/icons'
 import { Header, ErrorText, Screen, Title } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
-import { claimerName, guardianToken, raiseAlert, resolveAlert } from '@/lib/alerts'
+import { claimerName, raiseAlert, resolveAlert } from '@/lib/alerts'
 import { firstName } from '@/lib/format'
 import { tryOrToast } from '@/lib/toast'
 import { distanceM, hasLocation } from '@/lib/geo'
@@ -19,7 +19,6 @@ export function PingScreen() {
   const { session, members, alerts, me, myPos } = useSessionCtx()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [token, setToken] = useState<string | null>(null)
 
   const myAlert = alerts.find((a) => a.member_id === me?.id && a.type === 'manual')
   const level = myAlert ? RANK[myAlert.level] : 0
@@ -37,17 +36,12 @@ export function PingScreen() {
       : `${firstName(nearest.name)} and the rest of your group.`
     : 'Your whole group.'
 
-  useEffect(() => {
-    if (myAlert && myAlert.level !== 'ping' && !token) void guardianToken(myAlert.id).then(setToken).catch(() => undefined)
-  }, [myAlert, token])
-
   async function raise(l: AlertLevel) {
     if (!me) return
     setBusy(true)
     setError('')
     try {
-      const r = await raiseAlert(me.id, l)
-      if (r.guardian_token) setToken(r.guardian_token)
+      await raiseAlert(me.id, l)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -67,13 +61,8 @@ export function PingScreen() {
             {claimer ? `${firstName(claimer)} is on it` : 'Request sent, waiting for a friend to answer'}
           </p>
           <p className="mt-1 text-ink-dim">
-            {myAlert.level === 'ping' ? 'Your group has your location.' : `${guardian} has been texted.`}
+            {myAlert.level === 'ping' ? 'Your group has your location.' : `${guardian} has been notified.`}
           </p>
-          {token && (
-            <a href={`/guardian/${token}`} target="_blank" rel="noreferrer" className="mt-1 inline-block min-h-[44px] leading-[44px] text-accent-pink underline">
-              Open guardian view (demo) ↗
-            </a>
-          )}
           <button
             disabled={busy}
             onClick={async () => {
