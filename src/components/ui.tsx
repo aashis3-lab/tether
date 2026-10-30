@@ -1,11 +1,11 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { buttonClass, type ButtonVariant } from './buttons'
-import { ArrowLeftIcon, CheckIcon, ChevronRightIcon, XIcon } from './icons'
+import { ArrowLeftIcon, XIcon } from './icons'
 
 export function Screen({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`app-shell animate-enter px-4 pb-8 pt-[max(0.5rem,env(safe-area-inset-top))] ${className}`}>
+    <div className={`app-shell animate-enter px-5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))] ${className}`}>
       {children}
     </div>
   )
@@ -20,9 +20,8 @@ export function Button({
   return <button {...props} className={`${buttonClass(variant, big)} ${className}`} />
 }
 
-/** Material 3 outlined text field. 16px text so iOS doesn't zoom on focus. */
 export const inputClass =
-  'w-full min-h-[52px] rounded-xl border border-outline bg-transparent px-4 text-lg text-ink placeholder:text-ink-faint transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary'
+  'w-full min-h-tap rounded-xl2 border border-white/50 bg-bg-card px-4 text-lg text-ink placeholder:text-ink-faint focus:border-accent-pink focus:outline-none'
 
 export function Field({
   label,
@@ -32,42 +31,37 @@ export function Field({
 }: InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: string }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-xs font-medium text-ink-dim">{label}</span>
+      <span className="mb-2 block text-sm font-semibold text-ink">{label}</span>
       <input {...props} className={`${inputClass} ${className}`} />
-      {hint && <span className="mt-1.5 block px-1 text-xs text-ink-dim">{hint}</span>}
+      {hint && <span className="mt-3 block text-ink-dim">{hint}</span>}
     </label>
   )
 }
 
-/** Page title (Material "headline-small", 22px). */
+/** Big bold page title used at the top of each design frame. */
 export function Title({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <h1 className={`text-2xl font-bold tracking-tight ${className}`}>{children}</h1>
+  return <h1 className={`text-[2rem] font-bold leading-tight tracking-tight ${className}`}>{children}</h1>
 }
 
-/** Elevated card on a tonal surface, 16px radius. */
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return (
-    <div className={`rounded-[20px] bg-surface-lowest p-4 shadow-soft dark:bg-surface-mid ${className}`}>
-      {children}
-    </div>
-  )
+  return <div className={`rounded-xl2 bg-bg-card p-5 ${className}`}>{children}</div>
 }
 
 export function ErrorText({ children }: { children: ReactNode }) {
   if (!children) return null
-  return <p className="rounded-xl bg-status-alert/10 px-4 py-3 text-base text-status-alert">{children}</p>
+  return <p className="rounded-xl bg-status-alert/15 px-4 py-3 text-status-alert">{children}</p>
 }
 
 export function Logo({ onClick }: { onClick?: () => void }) {
   return (
-    <button onClick={onClick} className="flex items-center gap-2 rounded-full pr-2" aria-label="Tether">
-      <img src="/icons/logo-mark.png" alt="" className="h-8 w-auto" />
-      <span className="text-xl font-bold tracking-tight">tether</span>
+    <button onClick={onClick} className="flex items-center gap-2" aria-label="Tether">
+      <img src="/icons/logo-mark.png" alt="" className="h-9 w-auto" />
+      <span className="text-xl font-bold tracking-tight">Tether</span>
     </button>
   )
 }
 
-/** Material 3 modal bottom sheet over a scrim. */
+/** Bottom sheet over a dimmed backdrop. */
 export function Sheet({
   open,
   onClose,
@@ -81,17 +75,21 @@ export function Sheet({
 }) {
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-[1000] flex animate-fade-in items-end justify-center bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/70" onClick={onClose}>
       <div
-        className="max-h-[90dvh] w-full max-w-app animate-slide-up overflow-y-auto rounded-t-[28px] bg-surface-low px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 shadow-e3"
+        className="max-h-[90dvh] w-full max-w-app overflow-y-auto rounded-t-3xl bg-bg-raised p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto mb-3 h-1 w-8 rounded-full bg-outline/50" />
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-xl font-bold">{title}</h2>
-          <IconButton label="Close" onClick={onClose} className="-mr-2">
-            <XIcon width={20} height={20} />
-          </IconButton>
+        <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-white/20" />
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold">{title}</h2>
+          <button
+            aria-label="Close"
+            onClick={onClose}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-ink"
+          >
+            <XIcon width={16} height={16} />
+          </button>
         </div>
         {children}
       </div>
@@ -102,68 +100,50 @@ export function Sheet({
 export function Spinner() {
   return (
     <div className="app-shell items-center justify-center">
-      <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary/15 border-t-primary" />
+      <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/10 border-t-accent-pink" />
     </div>
-  )
-}
-
-/** 48px round icon button (Material "standard" icon button). */
-export function IconButton({
-  label,
-  children,
-  className = '',
-  tone = 'standard',
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; tone?: 'standard' | 'tonal' | 'filled' }) {
-  const tones = {
-    standard: 'text-ink-dim hover:bg-ink/5',
-    tonal: 'bg-secondary-container text-secondary-on-container',
-    filled: 'bg-primary text-primary-on',
-  }
-  return (
-    <button
-      aria-label={label}
-      title={label}
-      {...props}
-      className={`flex h-tap w-tap shrink-0 items-center justify-center rounded-full transition active:scale-95 disabled:opacity-40 ${tones[tone]} ${className}`}
-    >
-      {children}
-    </button>
   )
 }
 
 /**
- * Small top app bar: back arrow, left-aligned title, optional trailing
- * actions. `back` is a path, or true for browser back; omit it on root pages.
+ * The one page header: back arrow on the left, page name centered, nothing
+ * on the right. `back` is a path, or true for browser back; omit it on
+ * root pages.
  */
-export function Header({ title, back, actions }: { title: string; back?: string | true; actions?: ReactNode }) {
+export function Header({ title, back }: { title: string; back?: string | true }) {
   const navigate = useNavigate()
   return (
-    <div className="-mx-1 mb-3 flex min-h-[56px] items-center gap-1">
-      {back && (
-        <IconButton label="Back" onClick={() => (back === true ? navigate(-1) : navigate(back))} className="text-ink">
-          <ArrowLeftIcon width={22} height={22} strokeWidth={2} />
-        </IconButton>
-      )}
-      <h1 className="min-w-0 flex-1 truncate pl-1 text-2xl font-bold tracking-tight">{title}</h1>
-      {actions}
+    <div className="mb-4 grid min-h-tap grid-cols-[3.25rem_1fr_3.25rem] items-center">
+      <div>
+        {back && (
+          <button
+            aria-label="Back"
+            onClick={() => (back === true ? navigate(-1) : navigate(back))}
+            className="-ml-2 flex h-[52px] w-[52px] items-center justify-center rounded-full text-ink active:bg-white/10"
+          >
+            <ArrowLeftIcon width={26} height={26} strokeWidth={2.25} />
+          </button>
+        )}
+      </div>
+      <h1 className="truncate text-center text-xl font-bold tracking-tight">{title}</h1>
+      <div />
     </div>
   )
 }
 
-/** Small context label above a title ("DESTINATION", "MAYA'S PARTY"). */
+/** Small all-caps context label above a title ("DESTINATION", "MAYA'S PARTY"). */
 export function Eyebrow({ children, tone = 'pink' }: { children: ReactNode; tone?: 'pink' | 'orange' }) {
   return (
-    <p className={`text-sm font-bold ${tone === 'pink' ? 'text-primary-ink' : 'text-secondary-ink'}`}>
+    <p className={`text-sm font-bold uppercase tracking-wide ${tone === 'pink' ? 'text-accent-pink' : 'text-accent-orange'}`}>
       {children}
     </p>
   )
 }
 
-/** Tonal card with a small colored heading line. */
+/** Dark card with a small colored heading line, used for info blocks in the designs. */
 export function InfoCard({
   heading,
-  headingClass = 'text-secondary-ink',
+  headingClass = 'text-accent-orange',
   icon,
   children,
   className = '',
@@ -175,177 +155,14 @@ export function InfoCard({
   className?: string
 }) {
   return (
-    <div className={`rounded-2xl bg-surface-high/70 p-4 ${className}`}>
+    <div className={`rounded-xl2 border border-white/5 bg-bg-card p-4 ${className}`}>
       {heading && (
-        <p className={`mb-1.5 flex items-center gap-2 text-sm font-medium ${headingClass}`}>
+        <p className={`mb-2 flex items-center gap-2 text-sm font-bold ${headingClass}`}>
           {icon}
           {heading}
         </p>
       )}
-      <div className="text-base text-ink-dim">{children}</div>
+      <div className="text-ink-dim">{children}</div>
     </div>
-  )
-}
-
-/** Material 3 filter / assist chip. */
-export function Chip({
-  selected,
-  icon,
-  children,
-  className = '',
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { selected?: boolean; icon?: ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      {...props}
-      className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border-[1.5px] px-3.5 text-sm font-semibold transition-colors disabled:opacity-40 ${
-        selected ? 'border-transparent bg-brand text-white' : 'border-ink/10 bg-surface-lowest text-ink-dim dark:bg-surface-mid'
-      } ${className}`}
-    >
-      {icon}
-      {children}
-    </button>
-  )
-}
-
-/** A colored status pill ("All together", "1 separated"). */
-export function StatusChip({
-  tone,
-  children,
-  className = '',
-}: {
-  tone: 'calm' | 'checkin' | 'alert' | 'neutral'
-  children: ReactNode
-  className?: string
-}) {
-  const tones = {
-    calm: 'bg-status-calm/10 text-status-calm',
-    checkin: 'bg-status-checkin/15 text-status-checkin',
-    alert: 'bg-status-alert/10 text-status-alert',
-    neutral: 'bg-surface-highest text-ink-dim',
-  }
-  const dot = { calm: 'bg-status-calm', checkin: 'bg-status-checkin', alert: 'bg-status-alert', neutral: 'bg-outline' }
-  return (
-    <span className={`inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium ${tones[tone]} ${className}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${dot[tone]}`} />
-      {children}
-    </span>
-  )
-}
-
-/**
- * Google Contacts-style list row: leading avatar/icon, headline, supporting
- * text, trailing metadata. Clickable when `onClick` is given.
- */
-export function ListItem({
-  leading,
-  headline,
-  supporting,
-  trailing,
-  onClick,
-  chevron,
-  className = '',
-}: {
-  leading?: ReactNode
-  headline: ReactNode
-  supporting?: ReactNode
-  trailing?: ReactNode
-  onClick?: () => void
-  chevron?: boolean
-  className?: string
-}) {
-  const body = (
-    <>
-      {leading && <span className="flex shrink-0 items-center justify-center">{leading}</span>}
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-lg text-ink">{headline}</span>
-        {supporting && <span className="mt-0.5 block text-base text-ink-dim">{supporting}</span>}
-      </span>
-      {trailing && <span className="shrink-0 text-right text-xs text-ink-dim">{trailing}</span>}
-      {chevron && <ChevronRightIcon width={18} height={18} className="shrink-0 text-ink-faint" />}
-    </>
-  )
-  const cls = `flex w-full min-h-[56px] items-center gap-4 px-4 py-3 text-left ${className}`
-  return onClick ? (
-    <button type="button" onClick={onClick} className={`${cls} transition-colors hover:bg-ink/[0.04]`}>
-      {body}
-    </button>
-  ) : (
-    <div className={cls}>{body}</div>
-  )
-}
-
-/** Google Settings-style group: small colored title, rounded tonal block with dividers. */
-export function ListSection({ title, children, className = '' }: { title?: ReactNode; children: ReactNode; className?: string }) {
-  return (
-    <section className={className}>
-      {title && <h2 className="px-1 pb-2 pt-6 text-base font-bold text-ink">{title}</h2>}
-      <div className="divide-y divide-line/60 overflow-hidden rounded-[20px] bg-surface-lowest shadow-soft dark:bg-surface-mid">{children}</div>
-    </section>
-  )
-}
-
-/** Material 3 segmented button. */
-export function Segmented<T extends string>({
-  value,
-  options,
-  onChange,
-  className = '',
-}: {
-  value: T
-  options: { value: T; label: string; icon?: ReactNode }[]
-  onChange: (v: T) => void
-  className?: string
-}) {
-  return (
-    <div role="radiogroup" className={`flex gap-1 rounded-2xl bg-surface-high p-1 ${className}`}>
-      {options.map((o) => {
-        const on = o.value === value
-        return (
-          <button
-            key={o.value}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            onClick={() => onChange(o.value)}
-            className={`flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-bold transition-all ${
-              on ? 'bg-brand text-white shadow-[0_4px_12px_-4px_rgb(var(--c-primary)/0.6)]' : 'text-ink-dim'
-            }`}
-          >
-            {o.icon}
-            <span className="truncate">{o.label}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-/** Horizontal stepper for multi-step flows: numbered dots joined by lines. */
-export function Stepper({ steps, current }: { steps: string[]; current: number }) {
-  return (
-    <ol className="mb-5 flex items-center gap-1.5" aria-label={`Step ${current + 1} of ${steps.length}`}>
-      {steps.map((s, i) => {
-        const done = i < current
-        const on = i === current
-        return (
-          <li key={s} aria-current={on ? 'step' : undefined} className={`flex min-w-0 items-center gap-1.5 ${i < steps.length - 1 ? 'flex-1' : ''}`}>
-            <span
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-                done || on ? 'bg-primary text-primary-on' : 'border border-outline text-ink-dim'
-              }`}
-            >
-              {done ? <CheckIcon width={14} height={14} strokeWidth={3} /> : i + 1}
-            </span>
-            {(done || on) && (
-              <span className={`whitespace-nowrap text-xs font-medium ${on ? 'text-ink' : 'text-ink-dim'}`}>{s}</span>
-            )}
-            {i < steps.length - 1 && <span className={`h-px min-w-2 flex-1 ${done ? 'bg-primary' : 'bg-outline-variant'}`} />}
-          </li>
-        )
-      })}
-    </ol>
   )
 }

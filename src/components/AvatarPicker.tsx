@@ -72,20 +72,20 @@ export function AvatarPicker({
           <button
             type="button"
             onClick={() => camera.current?.click()}
-            className="min-h-[48px] rounded-xl border border-white/15 bg-surface-high/70 px-2 text-sm font-semibold"
+            className="min-h-[48px] rounded-xl2 border border-white/15 bg-bg-card px-2 text-sm font-semibold"
           >
             Take photo
           </button>
           <button
             type="button"
             onClick={() => library.current?.click()}
-            className="min-h-[48px] rounded-xl border border-white/15 bg-surface-high/70 px-2 text-sm font-semibold"
+            className="min-h-[48px] rounded-xl2 border border-white/15 bg-bg-card px-2 text-sm font-semibold"
           >
             Choose photo
           </button>
         </div>
         {url ? (
-          <button type="button" onClick={() => void commit(null)} className="self-start rounded-full text-sm font-medium text-primary-ink">
+          <button type="button" onClick={() => void commit(null)} className="self-start text-base text-ink-faint underline">
             Remove picture
           </button>
         ) : (
@@ -147,7 +147,7 @@ function CircleCropper({
   return (
     <div className="fixed inset-0 z-[2600] flex justify-center bg-black/90">
       <div className="flex w-full max-w-app flex-col items-center px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
-        <p className="text-xl font-medium">Move and zoom</p>
+        <p className="text-xl font-bold">Move and zoom</p>
         <div className="flex flex-1 items-center">
           <div
             className="relative overflow-hidden rounded-full ring-4 ring-white/80"

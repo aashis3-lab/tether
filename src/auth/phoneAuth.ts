@@ -1,4 +1,3 @@
-import { displayPhone, parsePhone } from '@/lib/phone'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -77,12 +76,17 @@ export async function listenForSmsCode(signal: AbortSignal): Promise<string | nu
   }
 }
 
-/** E.164 for a valid number (US 10-digit or +country code), else the raw digits. */
+/** Light normalization to E.164 assuming US numbers when no country code. */
 export function normalizePhone(raw: string): string {
-  return parsePhone(raw) ?? raw.replace(/[^\d+]/g, '')
+  const digits = raw.replace(/[^\d+]/g, '')
+  if (digits.startsWith('+')) return digits
+  if (digits.length === 10) return '+1' + digits
+  if (digits.length === 11 && digits.startsWith('1')) return '+' + digits
+  return '+' + digits
 }
 
-/** "+12175550142" -> "(217) 555-0142" for display; other formats pass through. */
+/** "+12175550142" -> "+1 (217) 555-0142" for display; other formats pass through. */
 export function formatPhone(e164: string): string {
-  return displayPhone(e164)
+  const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(e164)
+  return m ? `+1 (${m[1]}) ${m[2]}-${m[3]}` : e164
 }

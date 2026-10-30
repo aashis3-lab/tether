@@ -3,9 +3,6 @@ import { centroid, distanceM, formatDistance, hasLocation, timeAgo } from './geo
 import { firstName } from './format'
 import type { Alert, LatLng, Member, MemberStatus } from './types'
 
-/** Shown wherever a request goes out without a location to share. */
-export const LOCATION_OFF = "Your location is off. Your group can't see where you are."
-
 export type Tone = 'calm' | 'checkin' | 'alert'
 
 // Never label anyone as intoxicated: these are neutral, location-only words.
@@ -117,33 +114,9 @@ export function groupState(members: Member[], alerts: Alert[], meId: string | un
     return { tone: 'checkin', line: `${names(away, meId)} ${solo ? 'is' : 'are'} away`, sub }
   }
 
-  // "Together" only counts people whose location the group can actually see.
-  const together = out.filter((m) => m.status === 'together' && hasLocation(m)).length
-  const dark = out.filter((m) => m.status === 'together' && !hasLocation(m))
-  const darkSub = dark.length ? `${names(dark, meId)} ${dark.length === 1 && dark[0].id !== meId ? 'has' : 'have'} location off` : null
-  const fullSub = [darkSub, sub].filter(Boolean).join(' · ') || null
+  const together = out.filter((m) => m.status === 'together').length
   if (members.length === 0) return { tone: 'calm', line: 'Loading your group…', sub: null }
   if (out.length === 0) return { tone: 'calm', line: 'Everyone is home', sub: null }
-  if (members.length === 1) return { tone: 'calm', line: 'Just you so far', sub: darkSub }
-  return { tone: 'calm', line: together === out.length ? `All ${together} together` : `${together} of ${out.length} together`, sub: fullSub }
-}
-
-/**
- * "4 friends · all within 50 ft · updated now": the peek line under the
- * group state.
- */
-export function groupMeta(members: Member[], me: Member | undefined, myPos: LatLng | null): string {
-  const others = members.filter((m) => m.id !== me?.id && m.status !== 'home')
-  const parts: string[] = [`${members.length} ${members.length === 1 ? 'person' : 'people'}`]
-  const located = others.filter(hasLocation)
-  if (myPos && located.length) {
-    const far = Math.max(...located.map((m) => distanceM(myPos, m)))
-    parts.push(located.length === others.length ? `all within ${formatDistance(far)}` : `${located.length} on map`)
-  }
-  const latest = members
-    .filter(hasLocation)
-    .map((m) => new Date(m.last_updated).getTime())
-    .sort((a, b) => b - a)[0]
-  if (latest) parts.push(`updated ${timeAgo(new Date(latest).toISOString()).replace('just now', 'now')}`)
-  return parts.join(' · ')
+  if (members.length === 1) return { tone: 'calm', line: 'Just you so far', sub: 'Invite friends to join' }
+  return { tone: 'calm', line: together === out.length ? `All ${together} together` : `${together} together`, sub }
 }

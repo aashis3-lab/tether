@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 
 export type SheetSnap = 'collapsed' | 'half' | 'full'
 
-const HANDLE_PX = 22
+const HANDLE_PX = 26
 const DRAG_THRESHOLD_PX = 6
 
 /**
@@ -100,8 +100,8 @@ export function BottomSheet({
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[900] flex justify-center">
       <div
-        className={`pointer-events-auto flex w-full max-w-app flex-col overflow-hidden rounded-t-[28px] bg-surface-low shadow-[0_-2px_12px_rgb(0_0_0/0.12)] ${
-          dragH == null ? 'transition-[height] duration-300 ease-[cubic-bezier(0.2,0,0,1)]' : ''
+        className={`pointer-events-auto flex w-full max-w-app flex-col overflow-hidden rounded-t-3xl border-t border-white/10 bg-bg-raised/95 shadow-[0_-12px_40px_rgba(0,0,0,0.55)] backdrop-blur ${
+          dragH == null ? 'transition-[height] duration-300 ease-out' : ''
         }`}
         style={{ height }}
       >
@@ -127,14 +127,14 @@ export function BottomSheet({
             className="flex w-full items-center justify-center"
             style={{ height: HANDLE_PX }}
           >
-            <span className="h-1 w-8 rounded-full bg-outline/50" />
+            <span className="h-1.5 w-12 rounded-full bg-white/30" />
           </button>
           <div ref={headerRef} className="px-4">
             {header}
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-2">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
           {children}
         </div>
         <div ref={safeRef} aria-hidden="true" className="pointer-events-none absolute h-[env(safe-area-inset-bottom)] w-0" />

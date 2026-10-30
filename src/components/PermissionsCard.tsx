@@ -54,8 +54,9 @@ export function PermissionsCard() {
   ]
 
   return (
-    <div className="mb-2">
-      <div className="divide-y divide-line/70 overflow-hidden rounded-2xl bg-surface-lowest dark:bg-surface-mid">
+    <div className="mb-8">
+      <h2 className="mb-2 text-sm font-semibold">Permissions</h2>
+      <div className="divide-y divide-white/5 rounded-xl2 bg-bg-card">
         {rows.map(({ kind, title, state }) => (
           <button
             key={kind}
@@ -64,7 +65,7 @@ export function PermissionsCard() {
             disabled={state === 'granted' || state === 'unsupported'}
             className="flex min-h-tap w-full items-center justify-between px-4 text-left"
           >
-            <span className="text-lg">{title}</span>
+            <span className="text-lg font-semibold">{title}</span>
             <span
               className={
                 state === 'granted' ? 'text-status-calm' : state === 'unsupported' ? 'text-ink-faint' : 'font-semibold text-status-checkin'

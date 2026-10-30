@@ -1,11 +1,12 @@
-import { useNow } from '@/hooks/useNow'
+import { useEffect, useState } from 'react'
 import { activityTimeLeft, liveActivity, memberStatusLabel } from '@/lib/activities'
 import { ruleMs } from '@/lib/alerts'
 import { firstName } from '@/lib/format'
-import { compass, distanceM, formatDistance, hasLocation, timeAgo } from '@/lib/geo'
+import { distanceM, formatDistance, hasLocation, timeAgo } from '@/lib/geo'
+import type { GroupState } from '@/lib/status'
 import type { CheckIn, LatLng, Member } from '@/lib/types'
 import { Avatar } from './Avatar'
-import { BatteryIcon, ChatIcon, PhoneIcon } from './icons'
+import { ChevronRightIcon } from './icons'
 
 type Attention = 'red' | 'yellow' | null
 
@@ -30,80 +31,59 @@ function describe(m: Member, checkIns: CheckIn[], now: number): { label: string;
   if (battery != null && battery <= 20 && m.status !== 'home') {
     if (battery <= 10) attention = 'red'
     else attention ??= 'yellow'
+    label = `${label} · ${battery}%`
   }
   return { label, timer: activityTimeLeft(m, now), attention }
 }
 
 const RING: Record<'red' | 'yellow', string> = {
-  red: 'ring-2 ring-status-alert ring-offset-2 ring-offset-surface-low',
-  yellow: 'ring-2 ring-status-checkin ring-offset-2 ring-offset-surface-low',
+  red: 'ring-[3px] ring-status-alert',
+  yellow: 'ring-[3px] ring-status-checkin',
 }
 const TEXT: Record<'red' | 'yellow', string> = { red: 'text-status-alert', yellow: 'text-status-checkin' }
 
-const digits = (p: string) => p.replace(/[^\d+]/g, '')
-
-/** Overlapping faces, Google Photos-style ("+2" when there are more). */
-export function AvatarStack({
-  members,
-  avatars,
-  max = 4,
-  size = 32,
-}: {
-  members: Member[]
-  avatars: Record<string, string | null>
-  max?: number
-  size?: number
-}) {
-  const shown = members.slice(0, max)
-  const extra = members.length - shown.length
-  return (
-    <span className="flex shrink-0 items-center">
-      {shown.map((m, i) => (
-        <Avatar
-          key={m.id}
-          name={m.name}
-          url={avatars[m.id]}
-          size={size}
-          className={`ring-2 ring-surface-low ${i > 0 ? '-ml-2.5' : ''}`}
-        />
-      ))}
-      {extra > 0 && (
-        <span
-          className="-ml-2.5 inline-flex items-center justify-center rounded-full bg-surface-highest text-xs font-medium text-ink-dim ring-2 ring-surface-low"
-          style={{ width: size, height: size }}
-        >
-          +{extra}
-        </span>
-      )}
-    </span>
-  )
+const BAR: Record<GroupState['tone'], string> = {
+  calm: 'bg-safe text-black',
+  checkin: 'bg-findme text-black',
+  alert: 'bg-danger text-white',
 }
 
 /**
- * The friend list in the session sheet: avatar, name, status, distance and
- * direction, battery, last update, plus call / navigate actions.
+ * Summary bar over the map: one large line whose color is the group state
+ * (green all together, yellow someone away, red someone needs help). The
+ * chevron expands it into the full list with everyone's status.
  */
-export function FriendList({
+export function GroupWidget({
   members,
   me,
   checkIns,
   avatars,
-  phones,
   myPos,
-  activeId,
+  state,
+  partyName,
   onMemberTap,
 }: {
   members: Member[]
   me: Member | undefined
   checkIns: CheckIn[]
   avatars: Record<string, string | null>
-  phones: Record<string, string | null>
   myPos: LatLng | null
-  /** Member whose detail sheet is open (its avatar carries the shared-element name). */
-  activeId?: string | null
+  /** From groupState(): tone + the big line. */
+  state: GroupState
+  /** Party name, shown small in the expanded list. */
+  partyName?: string | null
+  /** Tap a member to open their card. */
   onMemberTap?: (m: Member) => void
 }) {
-  const now = useNow()
+  const [open, setOpen] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
+
+  // Tick so countdowns and expiries update on their own.
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 15_000)
+    return () => window.clearInterval(t)
+  }, [])
+
   const rows = members
     .map((m) => ({ m, ...describe(m, checkIns, now) }))
     .sort(
@@ -112,71 +92,44 @@ export function FriendList({
     )
 
   return (
-    <ul className="-mx-4">
-      {rows.map(({ m, label, timer, attention }) => {
-        const isMe = m.id === me?.id
-        const located = hasLocation(m)
-        const phone = phones[m.id]
-        const where =
-          !isMe && myPos && located ? `${formatDistance(distanceM(myPos, m))} ${compass(myPos, m)}` : null
-        // "Location off" already says it when the label does.
-        const seen = m.status === 'home' ? null : located ? timeAgo(m.last_updated) : label === 'Location off' ? null : 'no location'
-        return (
-          <li key={m.id} className="flex items-center gap-1 pr-2 transition-colors hover:bg-ink/[0.03]">
-            <button
-              type="button"
-              onClick={() => onMemberTap?.(m)}
-              className="flex min-h-[64px] min-w-0 flex-1 items-center gap-3.5 py-2 pl-4 text-left"
-            >
-              <span style={activeId == null ? { viewTransitionName: `member-${m.id}` } : undefined} className="rounded-full">
-                <Avatar name={m.name} url={avatars[m.id]} size={40} ring={attention ? RING[attention] : undefined} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="flex items-baseline gap-2">
-                  <span className="truncate text-lg font-medium text-ink">{isMe ? `${firstName(m.name)} (you)` : m.name}</span>
-                </span>
-                <span className={`block truncate text-base ${attention ? `${TEXT[attention]} font-medium` : 'text-ink-dim'}`}>
-                  {label}
-                  {timer && <span className="ml-1.5 rounded-full bg-ink/10 px-1.5 text-xs text-ink">{timer}</span>}
-                </span>
-                <span className="mt-0.5 flex items-center gap-2 text-xs text-ink-faint">
-                  {where && <span>{where}</span>}
-                  {m.battery_level != null && (
-                    <span className={`inline-flex items-center gap-0.5 ${m.battery_level <= 20 ? 'text-status-alert' : ''}`}>
-                      <BatteryIcon width={13} height={13} />
-                      {m.battery_level}%
-                    </span>
-                  )}
-                  {seen && <span>{seen}</span>}
-                </span>
-              </span>
-            </button>
-            {!isMe && (
-              <span className="flex shrink-0 items-center">
-                {phone && (
-                  <a
-                    href={`sms:${digits(phone)}`}
-                    aria-label={`Text ${firstName(m.name)}`}
-                    className="flex h-10 w-10 items-center justify-center rounded-full text-primary-ink hover:bg-primary/10"
-                  >
-                    <ChatIcon width={18} height={18} />
-                  </a>
-                )}
-                {phone ? (
-                  <a
-                    href={`tel:${digits(phone)}`}
-                    aria-label={`Call ${firstName(m.name)}`}
-                    className="flex h-10 w-10 items-center justify-center rounded-full text-primary-ink hover:bg-primary/10"
-                  >
-                    <PhoneIcon width={19} height={19} />
-                  </a>
-                ) : null}
-              </span>
-            )}
-          </li>
-        )
-      })}
-    </ul>
+    <div className="overflow-hidden rounded-2xl shadow-lg">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-label={`${state.line}. ${open ? 'Hide' : 'Show'} everyone`}
+        className={`flex min-h-[68px] w-full items-center gap-3 px-4 py-2 text-left ${BAR[state.tone]}`}
+      >
+        <span className="min-w-0 flex-1" aria-live="polite">
+          <span className="block truncate text-2xl font-extrabold leading-tight">{state.line}</span>
+          {state.sub && <span className="block truncate text-base font-semibold opacity-80">{state.sub}</span>}
+        </span>
+        <ChevronRightIcon width={26} height={26} strokeWidth={2.25} className={`shrink-0 transition-transform ${open ? '-rotate-90' : 'rotate-90'}`} />
+      </button>
+
+      {open && (
+        <div className="border-t border-white/10 bg-bg-card/95 backdrop-blur">
+          {partyName && <p className="truncate px-4 pt-3 text-sm font-bold uppercase tracking-wide text-accent-pink">{partyName} · {members.length}</p>}
+          <ul className="max-h-[50vh] divide-y divide-white/5 overflow-y-auto px-3 pb-2">
+            {rows.map(({ m, label, timer, attention }) => (
+              <li key={m.id} onClick={() => onMemberTap?.(m)} className="flex min-h-[60px] cursor-pointer items-center gap-3 py-2.5 active:opacity-70">
+                <Avatar name={m.name} url={avatars[m.id]} size={44} ring={attention ? RING[attention] : undefined} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-lg font-semibold">{m.id === me?.id ? `${firstName(m.name)} (you)` : m.name}</p>
+                  <p className={`truncate text-base ${attention ? TEXT[attention] + ' font-semibold' : 'text-ink-dim'}`}>
+                    {label}
+                    {timer && <span className="ml-1 rounded-full bg-white/10 px-1.5 text-sm text-ink">{timer}</span>}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right text-sm text-ink-dim">
+                  {m.id !== me?.id && myPos && hasLocation(m) && <p>{formatDistance(distanceM(myPos, m))}</p>}
+                  <p>{m.status === 'home' ? '' : hasLocation(m) ? timeAgo(m.last_updated) : 'no location'}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   )
 }
 
