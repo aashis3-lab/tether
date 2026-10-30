@@ -22,7 +22,7 @@ interface GuardianData {
 const POLL_MS = 5000
 
 /**
- * /guardian/:token, no login. Shows the SMS that would be (or was) sent,
+ * /guardian/:token, no login. Shows the alert message that was sent,
  * then ONE instruction with ONE call button. Polls because anonymous
  * visitors can't use RLS-gated Realtime.
  */
@@ -85,9 +85,9 @@ export function GuardianView() {
       <Logo />
       <p className="mt-2 text-ink-dim">Guardian view{data.guardian_name ? ` for ${data.guardian_name}` : ''}</p>
 
-      {/* The SMS as it would arrive. */}
+      {/* The alert message. */}
       <div className="mt-6">
-        <p className="mb-1 text-center text-sm text-ink-faint">Text Message · {formatClock(data.created_at)}</p>
+        <p className="mb-1 text-center text-sm text-ink-faint">Tether alert · {formatClock(data.created_at)}</p>
         <div className="max-w-[85%] rounded-3xl rounded-bl-md bg-bg-card px-4 py-3 text-base leading-snug">{data.message}</div>
       </div>
 

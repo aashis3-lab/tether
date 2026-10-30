@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { TabScreen } from '@/components/BottomNav'
-import { AUTH_MODE, formatPhone } from '@/auth/phoneAuth'
+import { formatPhone } from '@/auth/phoneAuth'
 import { AvatarPicker } from '@/components/AvatarPicker'
 import { BackTapSteps } from '@/components/BackTapSteps'
 import { GuardianSheet } from '@/components/GuardianSheet'
@@ -22,7 +22,7 @@ import type { Contact, Member, Profile } from '@/lib/types'
 type Edit = null | 'phone' | 'contacts' | 'guardian' | 'home' | 'medical' | 'backtap'
 
 
-/** "Safety settings", rows open edit sheets; keychain pairing is a demo mock. */
+/** "Safety settings", rows open edit sheets. */
 export function Settings() {
   const { userId, profile, refreshProfile, signOut } = useAuth()
   const navigate = useNavigate()
@@ -137,7 +137,7 @@ export function Settings() {
       <Sheet open={edit === 'phone'} onClose={() => setEdit(null)} title="Phone">
         <p className="text-2xl font-bold">{formatPhone(profile.phone)}</p>
         <p className="mt-2 text-ink-dim">
-          This is the number you sign in with{AUTH_MODE === 'mock' ? ' (demo sign-in)' : ''}. To use a different number,
+          This is the number you sign in with. To use a different number,
           sign out and sign in again.
         </p>
       </Sheet>
