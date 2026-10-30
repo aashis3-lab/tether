@@ -39,13 +39,42 @@ async function geocode(query: string, near: LatLng | null, extra = ''): Promise<
 const LOCAL_DEG_LAT = 0.36
 const LOCAL_DEG_LNG = 0.48
 
+/** "Murphy's Pub" -> ["murphys", "pub"]: lowercase, no accents or punctuation. */
+function words(s: string): string[] {
+  return s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/['’`]/g, '')
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+}
+
+/** Every typed word starts some word of the name ("murph p" matches "Murphy's Pub"). */
+function nameMatches(name: string, query: string): boolean {
+  const q = words(query)
+  const n = words(name)
+  return q.length > 0 && q.every((w) => n.some((x) => x.startsWith(w)))
+}
+
 /**
- * Address / venue search biased to where you are. Proximity alone is only a
- * hint (an exact place name like "Red Lion, PA" can still outrank a bar down
- * the street), so matches inside a ~40 km box around `near` come first,
- * closest first, then anything else.
+ * Instant results while typing: venues already loaded nearby whose name
+ * matches, closest first. No network.
  */
-export async function searchPlaces(query: string, near: LatLng | null) {
+export function matchNearby(query: string, nearby: Destination[]): Destination[] {
+  return nearby.filter((d) => nameMatches(d.name, query))
+}
+
+/**
+ * Venue-first search biased to where you are:
+ *  1. venues already loaded nearby whose name matches (instant),
+ *  2. MapTiler points of interest (businesses) with that name nearby,
+ *  3. OpenStreetMap bars / pubs / clubs / restaurants with that name within
+ *     ~15 km (via our Edge Function),
+ *  4. then plain addresses, nearby first (an exact place name like
+ *     "Red Lion, PA" can otherwise outrank a bar down the street).
+ */
+export async function searchPlaces(query: string, near: LatLng | null, nearby: Destination[] = []) {
   if (!near) {
     if (import.meta.env.DEV) console.info('[tether] search not location-biased: no GPS, home address or IP location yet')
     return geocode(query, null, '&autocomplete=true&limit=10')
@@ -53,13 +82,18 @@ export async function searchPlaces(query: string, near: LatLng | null) {
   const bbox = [near.lng - LOCAL_DEG_LNG, near.lat - LOCAL_DEG_LAT, near.lng + LOCAL_DEG_LNG, near.lat + LOCAL_DEG_LAT]
     .map((n) => n.toFixed(5))
     .join(',')
-  const [local, wide] = await Promise.all([
+  const [pois, osm, local, wide] = await Promise.all([
+    geocode(query, near, `&types=poi&autocomplete=true&limit=10&bbox=${bbox}`),
+    query.trim().length >= 3 ? overpassViaServer(near, 15_000, query.trim()) : Promise.resolve(null),
     geocode(query, near, `&autocomplete=true&limit=10&bbox=${bbox}`),
     geocode(query, near, '&autocomplete=true&limit=5'),
   ])
   const byDistance = (x: Destination, y: Destination) => distM(near, x) - distM(near, y)
+  const venues = mergeSorted(near, matchNearby(query, nearby), pois, osm ?? [])
+  const isVenue = (d: Destination) => venues.some((v) => v.name.toLowerCase() === d.name.toLowerCase() && distM(v, d) < 100)
   const far = wide.filter((w) => !local.some((l) => l.name === w.name && distM(l, w) < 100))
-  return [...local.sort(byDistance), ...far.sort(byDistance)].slice(0, 10)
+  const addresses = [...local.sort(byDistance), ...far.sort(byDistance)].filter((d) => !isVenue(d))
+  return [...venues, ...addresses].slice(0, 12)
 }
 
 // ---------------------------------------------------------------------------
@@ -142,11 +176,14 @@ async function mapTilerNearby(near: LatLng): Promise<Destination[]> {
   return lists.flat().filter((d) => distM(near, d) < 8000)
 }
 
-/** Overpass via our Edge Function (Overpass rejects browser user agents). */
-async function overpassViaServer(near: LatLng, radius: number): Promise<Destination[] | null> {
+/**
+ * Overpass via our Edge Function (Overpass rejects browser user agents).
+ * With `name`, only venues whose name contains it.
+ */
+async function overpassViaServer(near: LatLng, radius: number, name?: string): Promise<Destination[] | null> {
   try {
     const { data, error } = await supabase.functions.invoke('evaluate-session', {
-      body: { nearby: { lat: near.lat, lng: near.lng, radius } },
+      body: { nearby: { lat: near.lat, lng: near.lng, radius, name } },
     })
     if (error || !data?.places) return null
     return (data.places as Destination[]).map((d) => ({

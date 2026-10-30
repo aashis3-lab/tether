@@ -9,7 +9,7 @@ import { StartProgress } from './StartFlow'
 import { locationPermission, requestLocation } from '@/lib/device'
 import { distanceM, formatDistance, placeName, reverseGeocode } from '@/lib/geo'
 import { updateDraft, useNightDraft, type Destination } from '@/lib/nightDraft'
-import { approximateLocation, nearbyPlacesLive, placesAvailable, recentDestinations, searchPlaces } from '@/lib/places'
+import { approximateLocation, matchNearby, nearbyPlacesLive, placesAvailable, recentDestinations, searchPlaces } from '@/lib/places'
 import type { LatLng } from '@/lib/types'
 
 const same = (a: Destination, b: Destination) => a.name === b.name && a.address === b.address
@@ -80,15 +80,17 @@ export function DestinationScreen() {
     })
   }, [])
 
-  // Debounced autocomplete.
+  // Autocomplete: nearby venues with that name right away, then the full
+  // (debounced) search.
   useEffect(() => {
     if (!query.trim()) {
       setResults([])
       return
     }
+    setResults(matchNearby(query, nearby))
     setSearching(true)
     const t = window.setTimeout(async () => {
-      setResults(await searchPlaces(query, anchor))
+      setResults(await searchPlaces(query, anchor, nearby))
       setSearching(false)
     }, 300)
     return () => window.clearTimeout(t)
