@@ -2,6 +2,8 @@
 // Android Chrome vs installed PWA), so everything permission-related goes
 // through this module instead of touching the raw APIs in screens.
 
+import { supabase } from './supabase'
+
 export type PermState = 'granted' | 'denied' | 'prompt' | 'unsupported'
 
 const ua = navigator.userAgent
@@ -126,9 +128,44 @@ export async function requestNotifications(): Promise<PermState | 'needs-install
   if (current !== 'prompt') return current
   try {
     const result = await Notification.requestPermission()
+    if (result === 'granted') void ensurePushSubscription()
     return result === 'default' ? 'prompt' : result
   } catch {
     return 'unsupported'
+  }
+}
+
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY ?? ''
+
+function urlBase64ToUint8Array(b64: string): Uint8Array<ArrayBuffer> {
+  const raw = atob((b64 + '='.repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/'))
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0))
+}
+
+/**
+ * Registers this device for web push (alerts arrive with the app closed) and
+ * saves it to the signed-in account. Safe to call often. Needs notification
+ * permission and a service worker (production build; on iPhone only once
+ * added to the Home Screen).
+ */
+export async function ensurePushSubscription(): Promise<boolean> {
+  if (!VAPID_PUBLIC_KEY || notificationPermission() !== 'granted' || !('PushManager' in window)) return false
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration()
+    if (!reg) return false
+    const sub =
+      (await reg.pushManager.getSubscription()) ??
+      (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) }))
+    const json = sub.toJSON()
+    if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return false
+    const { error } = await supabase.rpc('save_push_subscription', {
+      p_endpoint: json.endpoint,
+      p_p256dh: json.keys.p256dh,
+      p_auth: json.keys.auth,
+    })
+    return !error
+  } catch {
+    return false
   }
 }
 

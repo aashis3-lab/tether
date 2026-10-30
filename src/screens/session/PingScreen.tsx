@@ -61,7 +61,7 @@ export function PingScreen() {
             {claimer ? `${firstName(claimer)} is on it` : 'Request sent, waiting for a friend to answer'}
           </p>
           <p className="mt-1 text-ink-dim">
-            {myAlert.level === 'ping' ? 'Your group has your location.' : `${guardian} has been texted.`}
+            {myAlert.level === 'ping' ? 'Your group has your location.' : `${guardian} has been notified.`}
           </p>
           <button
             disabled={busy}

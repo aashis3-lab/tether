@@ -10,12 +10,14 @@
 // or paste this file into Dashboard -> Edge Functions -> new function, and
 // untick "Enforce JWT verification".
 //
-// Secrets: APP_BASE_URL, CRON_SECRET (SUPABASE_URL and
+// Secrets: APP_BASE_URL, CRON_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY,
+// VAPID_SUBJECT (SUPABASE_URL and
 // SUPABASE_SERVICE_ROLE_KEY are provided automatically).
 //
 // Single file on purpose so it can be pasted into the dashboard editor.
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import webpush from 'npm:web-push@3.6.7'
 
 // ---------------------------------------------------------------------------
 // Config
@@ -209,15 +211,16 @@ Deno.serve(async (req) => {
   for (const s of sessions) {
     try {
       results.push({ session_id: s.id, actions: await evaluateSession(db, s) })
+      await pushSessionEvents(db, s.id)
     } catch (e) {
       console.error('evaluate failed', s.id, e)
       results.push({ session_id: s.id, error: String(e) })
     }
   }
-  // Texts queued by the database (HELP, guardian alerts, everyone home, test).
-  // Cron sends everything; an app sends its party's texts and its own.
-  const sms = await processOutbox(db, isCron ? {} : { sessionId: body.session_id, userId: uid! })
-  return json({ results, sms })
+  // Guardian messages queued by the database (HELP, guardian alerts, everyone
+  // home, test). Cron sends everything; an app sends its party's and its own.
+  const guardian = await processOutbox(db, isCron ? {} : { sessionId: body.session_id, userId: uid! })
+  return json({ results, guardian })
 })
 
 // ---------------------------------------------------------------------------
@@ -276,22 +279,32 @@ async function overpassNearby(lat: number, lng: number, radius: number) {
 }
 
 // ---------------------------------------------------------------------------
-// SMS via Twilio
+// Web push (replaces SMS)
 // ---------------------------------------------------------------------------
 
-const TWILIO_SID = Deno.env.get('TWILIO_ACCOUNT_SID') ?? ''
-const TWILIO_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN') ?? ''
-const TWILIO_FROM = Deno.env.get('TWILIO_FROM_NUMBER') ?? ''
+const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY') ?? ''
+const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY') ?? ''
+const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') || 'mailto:tether@example.com'
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY)
+
 const STALE_SENDING_MS = 2 * 60_000
 const MAX_ATTEMPTS = 3
 
 interface OutboxRow {
   id: string
+  to_name: string | null
   to_phone: string
   body: string
   status: 'pending' | 'sending' | 'sent' | 'failed'
   attempts: number
   created_at: string
+}
+
+interface PushMessage {
+  title: string
+  body: string
+  url: string
+  tag: string
 }
 
 /** "(217) 555-0138" -> "+12175550138". US numbers assumed without a country code. */
@@ -304,15 +317,47 @@ function toE164(raw: string): string {
 }
 
 /**
- * Sends pending texts. Each row is claimed with a conditional update so two
- * runners (cron + an app) can never send the same text twice; event_key
- * uniqueness already guarantees one row per event. Failures are recorded
- * with the reason and never throw, so the alert flow keeps going.
+ * Pushes to every device of these users. Dead subscriptions (404/410) are
+ * removed. Returns how many devices got it.
+ */
+async function pushToUsers(db: SupabaseClient, userIds: string[], msg: PushMessage): Promise<number> {
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY || userIds.length === 0) return 0
+  const { data } = await db.from('push_subscriptions').select('id, endpoint, p256dh, auth').in('user_id', userIds)
+  let delivered = 0
+  for (const sub of (data ?? []) as { id: string; endpoint: string; p256dh: string; auth: string }[]) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        JSON.stringify(msg),
+        { TTL: 3600, urgency: 'high' },
+      )
+      delivered++
+    } catch (e) {
+      const code = (e as { statusCode?: number }).statusCode
+      if (code === 404 || code === 410) await db.from('push_subscriptions').delete().eq('id', sub.id)
+      else console.error('push failed', sub.id, code, String(e))
+    }
+  }
+  return delivered
+}
+
+/** Records an event key; true only the first time, so each push goes out once. */
+async function firstTime(db: SupabaseClient, key: string): Promise<boolean> {
+  const { error } = await db.from('push_log').insert({ event_key: key })
+  return !error
+}
+
+/**
+ * Delivers queued guardian messages (HELP, guardian alerts, everyone home,
+ * test) as a push to the Tether account with that phone number. Each row is
+ * claimed with a conditional update so two runners (cron + an app) can never
+ * send it twice. Failures are recorded with a readable reason (shown in
+ * Settings) and never throw, so the alert flow keeps going.
  */
 async function processOutbox(db: SupabaseClient, scope: { sessionId?: string; userId?: string }) {
   let q = db
     .from('sms_outbox')
-    .select('id, to_phone, body, status, attempts, created_at')
+    .select('id, to_name, to_phone, body, status, attempts, created_at')
     .in('status', ['pending', 'sending'])
     .lt('attempts', MAX_ATTEMPTS)
     .order('created_at')
@@ -339,40 +384,93 @@ async function processOutbox(db: SupabaseClient, scope: { sessionId?: string; us
       .select('id')
     if (!claimed || claimed.length === 0) continue
 
-    const result = await sendTwilio(toE164(row.to_phone), row.body)
-    if (result.ok) {
+    const who = row.to_name?.trim() || 'Your guardian'
+    const { data: owners } = await db.from('profiles').select('id').eq('phone', toE164(row.to_phone))
+    const ids = ((owners ?? []) as { id: string }[]).map((o) => o.id)
+    let failure: string | null = null
+    if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) failure = 'Notifications are not set up on the server (VAPID keys missing).'
+    else if (ids.length === 0) failure = `${who} isn't on Tether yet. Ask them to sign up with ${row.to_phone}.`
+    else {
+      const link = /\s(https?:\/\/\S+)$/.exec(row.body)
+      const text = (link ? row.body.slice(0, link.index) : row.body).replace(/^Tether:\s*/, '')
+      const n = await pushToUsers(db, ids, { title: 'Tether', body: text, url: link?.[1] ?? '/', tag: `outbox-${row.id}` })
+      if (n === 0) failure = `${who} hasn't turned on Tether notifications.`
+    }
+
+    if (!failure) {
       sent++
-      await db
-        .from('sms_outbox')
-        .update({ status: 'sent', provider_sid: result.sid, sent_at: new Date().toISOString(), error: null })
-        .eq('id', row.id)
+      await db.from('sms_outbox').update({ status: 'sent', sent_at: new Date().toISOString(), error: null }).eq('id', row.id)
     } else {
       failed++
-      console.error('sms failed', row.id, result.error)
-      await db.from('sms_outbox').update({ status: 'failed', error: result.error }).eq('id', row.id)
+      console.error('guardian push failed', row.id, failure)
+      await db.from('sms_outbox').update({ status: 'failed', error: failure }).eq('id', row.id)
     }
   }
   return { sent, failed }
 }
 
-async function sendTwilio(to: string, body: string): Promise<{ ok: true; sid: string } | { ok: false; error: string }> {
-  if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_FROM) {
-    return { ok: false, error: 'Twilio is not set up: add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER secrets.' }
+function alertTitle(a: Alert, name: string): string {
+  if (a.level === 'emergency') return `EMERGENCY: ${name}`
+  if (a.level === 'alert') return `${name} needs help`
+  switch (a.type) {
+    case 'battery':
+      return `${name}'s phone is dying`
+    case 'left_alone':
+      return `${name} is on their own`
+    case 'separation':
+      return `${name} isn't answering`
+    case 'not_home':
+      return `${name} hasn't made it home`
+    default:
+      return `${name} needs you`
   }
-  try {
-    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`, {
-      method: 'POST',
-      headers: {
-        Authorization: 'Basic ' + btoa(`${TWILIO_SID}:${TWILIO_TOKEN}`),
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({ To: to, From: toE164(TWILIO_FROM), Body: body }).toString(),
+}
+
+const CHECK_IN_BODY: Record<string, string> = {
+  separation: "You've been away from your group for a while. Tap to answer.",
+  left_alone: 'You left on your own. All good? Tap to answer.',
+  not_home: "You haven't confirmed you're home. Tap to answer.",
+}
+
+/**
+ * Pushes this party's open alerts to their targets (once per alert, level
+ * and person, so a ping widening to the whole group reaches the new people)
+ * and open check-ins to the member asked.
+ */
+async function pushSessionEvents(db: SupabaseClient, sessionId: string) {
+  const [{ data: memberRows }, { data: ciRows }, { data: alertRows }] = await Promise.all([
+    db.from('session_members').select('id, user_id, name').eq('session_id', sessionId),
+    db.from('check_ins').select('id, member_id, reason').eq('session_id', sessionId).is('responded_at', null),
+    db.from('alerts').select('*').eq('session_id', sessionId).eq('resolved', false),
+  ])
+  const members = (memberRows ?? []) as { id: string; user_id: string | null; name: string }[]
+  const byId = new Map(members.map((m) => [m.id, m]))
+  const url = `/session/${sessionId}`
+
+  for (const a of (alertRows ?? []) as (Alert & { message: string | null })[]) {
+    if (a.claimed_by) continue
+    const from = byId.get(a.member_id)
+    for (const uid of a.target_user_ids ?? []) {
+      if (uid === from?.user_id) continue
+      if (!(await firstTime(db, `alert:${a.id}:${a.level}:${uid}`))) continue
+      await pushToUsers(db, [uid], {
+        title: alertTitle(a, from?.name ?? 'A friend'),
+        body: a.message ?? 'Tap to see where they are.',
+        url,
+        tag: `alert-${a.id}`,
+      })
+    }
+  }
+
+  for (const ci of (ciRows ?? []) as { id: string; member_id: string; reason: string }[]) {
+    const uid = byId.get(ci.member_id)?.user_id
+    if (!uid || !(await firstTime(db, `checkin:${ci.id}`))) continue
+    await pushToUsers(db, [uid], {
+      title: 'Are you okay?',
+      body: CHECK_IN_BODY[ci.reason] ?? 'Tap to answer.',
+      url,
+      tag: `checkin-${ci.id}`,
     })
-    const data = (await res.json().catch(() => ({}))) as { sid?: string; message?: string; code?: number }
-    if (res.ok && data.sid) return { ok: true, sid: data.sid }
-    return { ok: false, error: `Twilio ${res.status}${data.code ? ` (${data.code})` : ''}: ${data.message ?? 'send failed'}` }
-  } catch (e) {
-    return { ok: false, error: `Network error reaching Twilio: ${String(e)}` }
   }
 }
 

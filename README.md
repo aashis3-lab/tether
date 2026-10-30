@@ -65,6 +65,8 @@ order**:
     (then follow **Security settings** below)
 11. `20260112000000_real_timers.sql`: escalation timers always run at real-world speed (removes
     the old `tether_demo_speed` Vault secret)
+12. `20260113000000_push.sql`: web push subscriptions, push de-duplication log, guardian
+    reachability check (then redeploy `evaluate-session`)
 
 ### Security settings
 
@@ -75,9 +77,6 @@ Add this in **SQL editor** after migration 10 (optional but recommended):
 -- trusted, which lets a modified client put any link in a text to a guardian.
 select vault.create_secret('https://<your-app>.vercel.app', 'tether_app_url');
 ```
-
-Also check **Authentication → Providers → Anonymous sign-ins** is **off** in any project real
-people use: when it is on, anyone can skip SMS verification by calling the API directly.
 
 The app checks this on startup: if a migration is missing it shows exactly which file to run.
 
@@ -98,32 +97,13 @@ supabase db push
 
 ## 4. Enable sign-in
 
-Sign-up is phone + a real SMS code via Supabase phone auth (CLAUDE.md screen 1). Set it up
-as below.
+Sign-up is name + phone number, no SMS code. Under the hood each device gets a Supabase anonymous
+session with the phone stored on the profile. **Required:** dashboard → **Authentication → Sign
+In / Providers → "Allow anonymous sign-ins"** → on.
 
-### Real SMS codes
-
-1. Create a [Twilio](https://www.twilio.com) account and get a phone number that can send SMS.
-   (Trial accounts only text numbers you've verified in the Twilio console. That's fine for
-   testing; upgrade before real users sign up.)
-2. Supabase dashboard → **Authentication → Sign In / Providers → Phone** → enable, choose
-   **Twilio**, and paste the Account SID, Auth Token, and Message Service SID (or sender number).
-3. Same page → **SMS message** template. To let Android Chrome fill the code in automatically
-   (WebOTP), end the message with your site's domain and the code, like this:
-
-   ```
-   Your Tether code is {{ .Code }}
-
-   @your-app.vercel.app #{{ .Code }}
-   ```
-
-   The domain must match the address the app is opened from. iPhones fill the code in from the
-   keyboard suggestion either way.
-
-The app sends the code, enforces a 60s resend cooldown (Supabase's default per-number limit),
-verifies automatically when the 6th digit is entered, and shows readable errors (wrong/expired
-code, rate limit, provider not configured). Signing in again with the same number returns you to
-the same account and profile.
+Trade-offs: nobody verifies the number (anyone could type someone else's), and signing in on a
+new device creates a new account. The phone number is how a guardian's alerts find their Tether
+account, so people should use their real number.
 
 ## 5. Configure environment variables
 
@@ -134,7 +114,7 @@ cp .env.example .env
 Fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from **Project Settings → API** in the
 Supabase dashboard.
 
-Leave `VITE_TWILIO_ENABLED=false` until Twilio is set up (Phase 7).
+Set `VITE_VAPID_PUBLIC_KEY` for push notifications (see **Push notifications** below).
 
 ## 6. Run the dev server
 
@@ -206,25 +186,30 @@ supabase/
 designs/                 Figma screenshots (match these when present; see CLAUDE.md UI rules)
 ```
 
-## Twilio text messages
+## Push notifications
 
-Guardians get a real text on exactly three events: HELP pressed, an alert escalated to the guardian,
-and everyone home. Each text is under 160 characters, includes the guardian link where relevant,
-and is sent once (the `sms_outbox` table has a unique key per event, so repeated cron runs never
-duplicate it).
+Everything that used to be a text is now a web push notification, so alerts arrive even with
+Tether closed:
 
-1. In Twilio: note your **Account SID**, **Auth Token**, and a **phone number** that can send SMS.
-   (Trial accounts can only text numbers you verified in the Twilio console.)
-2. Supabase dashboard, **Edge Functions, Secrets**, add:
-   `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (e.g. `+12175550100`).
-   Also make sure `APP_BASE_URL` is your public app address so links in texts open for guardians.
-3. Redeploy `evaluate-session` (paste the file again, or `npx supabase functions deploy
-   evaluate-session --no-verify-jwt`).
-4. In the app: **Settings, Text messages, Send test text**. It texts tonight's guardian (or your
-   emergency contact) and shows "Sent" or the exact Twilio error.
+- **Group:** pings, alerts and "Are you okay?" check-ins, once per alert, level and person.
+- **Guardian:** HELP pressed, an alert escalated to the guardian, everyone home. The guardian must
+  be on Tether: the message goes to the account whose phone matches the guardian's number. The
+  guardian picker says whether they're on Tether with notifications on.
 
-Sign-in codes are separate: Supabase sends them itself. For real codes, also set
-**Authentication, Sign In / Providers, Phone** to Twilio with the same credentials.
+Where it works: Android Chrome, desktop Chrome / Edge / Firefox, and iPhone **only after Add to
+Home Screen** (iOS 16.4+), opened from the Home Screen icon.
+
+1. Generate a key pair: `npx web-push generate-vapid-keys`.
+2. Supabase dashboard, **Edge Functions, Secrets**, add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`
+   and `VAPID_SUBJECT` (`mailto:` + your email). Make sure `APP_BASE_URL` is your public app
+   address so guardian links open.
+3. Vercel (and `.env`): `VITE_VAPID_PUBLIC_KEY` = the same public key. Redeploy.
+4. Redeploy `evaluate-session`.
+5. In the app: allow notifications, then **Settings, Guardian alerts, Send test alert**. It
+   notifies tonight's guardian (or your emergency contact) and shows "Sent" or why it couldn't
+   ("isn't on Tether yet", "has notifications off").
+
+Push only works in a production build (the service worker is off in `npm run dev`).
 
 ## Testing with 3 people
 
@@ -320,7 +305,7 @@ Use two windows (A = Maya, B = Jake) in the same night out.
    sound, distance + direction, and **I'm on it**.
 2. B taps **Not right now** → the overlay comes back after 2 min until someone claims.
 3. B taps **I'm on it** → A sees "Jake is on it"; B gets a card with Directions + **Found them ✓**.
-4. A taps **Alert Mom** → "Mom has been texted". The guardian page (link in Mom's text)
+4. A taps **Alert Mom** → "Mom has been notified". The guardian page (link in Mom's notification)
    shows the SMS text, then one instruction ("Call Jake, they're 200 ft from Maya.") and one call
    button. It updates every 5 s (claims, resolution).
 5. A holds **Call 911** for 2 s and confirms → the phone dials real 911 (don't complete the call

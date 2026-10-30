@@ -40,6 +40,8 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        // Web push handlers (public/push-sw.js).
+        importScripts: ['push-sw.js'],
       },
       // Dev SW off: it caches aggressively during development, and workbox's
       // generator breaks on paths containing an apostrophe (e.g. "'26 Projects").

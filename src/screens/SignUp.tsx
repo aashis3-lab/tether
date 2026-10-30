@@ -1,20 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
-import {
-  RESEND_COOLDOWN_S,
-  formatPhone,
-  listenForSmsCode,
-  normalizePhone,
-  sendCode,
-  verifyCode,
-} from '@/auth/phoneAuth'
+import { formatPhone, normalizePhone, signInWithPhone } from '@/auth/phoneAuth'
 import { AlertOverlay } from '@/components/AlertOverlay'
 import { BackTapSteps } from '@/components/BackTapSteps'
 import { isIOS } from '@/lib/device'
 import { PermissionsFlow } from '@/components/PermissionsPage'
 import { ProfileForm } from '@/components/ProfileForm'
-import { CodeBoxes } from '@/components/CodeBoxes'
 import { CheckIcon } from '@/components/icons'
 import { Button, ErrorText, Field, Screen, Title } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
@@ -32,32 +24,8 @@ export function SignUp() {
 
   const [step, setStep] = useState<Step>(() => (userId ? 'profile' : 'verify'))
   const [phone, setPhone] = useState('')
-  const [codeSent, setCodeSent] = useState(false)
-  const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [resendIn, setResendIn] = useState(0)
-  const [sendCount, setSendCount] = useState(0)
-
-  // Resend countdown.
-  useEffect(() => {
-    if (resendIn <= 0) return
-    const t = window.setTimeout(() => setResendIn((s) => s - 1), 1000)
-    return () => window.clearTimeout(t)
-  }, [resendIn])
-
-  // Android Chrome: fill the code in straight from the incoming SMS. It is
-  // only filled in, the person still taps Verify.
-  useEffect(() => {
-    if (!codeSent) return
-    const ac = new AbortController()
-    void listenForSmsCode(ac.signal).then((c) => {
-      if (c && !ac.signal.aborted) setCode(c)
-    })
-    return () => ac.abort()
-     
-  }, [codeSent, sendCount])
-
   // Ignore taps right after a step appears, so a double tap can't skip it.
   const stepAt = useRef(0)
   useEffect(() => {
@@ -71,37 +39,16 @@ export function SignUp() {
   // Already fully set up and not mid-onboarding -> nothing to do here.
   if (!loading && profile && step === 'verify') return <Navigate to={next} replace />
 
-  async function requestCode() {
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (busy) return
     unlockAudio()
     setBusy(true)
     setError('')
-    setCode('')
     try {
       const normalized = normalizePhone(phone)
       setPhone(formatPhone(normalized))
-      await sendCode(normalized)
-      setCodeSent(true)
-      setResendIn(RESEND_COOLDOWN_S)
-      setSendCount((n) => n + 1)
-    } catch (err) {
-      setError((err as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function submit(e: FormEvent) {
-    e.preventDefault()
-    if (!codeSent) return requestCode()
-    return verify(code)
-  }
-
-  async function verify(value: string) {
-    if (busy) return
-    setBusy(true)
-    setError('')
-    try {
-      await verifyCode(normalizePhone(phone), value)
+      await signInWithPhone(normalized)
       const existing = await refreshProfile()
       setStep(existing ? 'done' : 'profile')
       if (existing) navigate(next, { replace: true })
@@ -122,7 +69,7 @@ export function SignUp() {
     <Screen className="pt-[max(3rem,env(safe-area-inset-top))]">
       {step === 'verify' && (
         <form onSubmit={submit} className="flex flex-1 flex-col">
-          <Title className="mb-6">Verify your phone</Title>
+          <Title className="mb-6">Your phone number</Title>
 
           <Field
             label="Phone number"
@@ -130,39 +77,20 @@ export function SignUp() {
             inputMode="tel"
             autoComplete="tel"
             value={phone}
-            onChange={(e) => {
-              setPhone(e.target.value)
-              if (codeSent) setCodeSent(false)
-            }}
+            onChange={(e) => setPhone(e.target.value)}
             placeholder="+1 (555) 123-4567"
+            hint="Your friends and guardian find you by this number."
             required
             autoFocus
           />
-
-          {codeSent && (
-            <div className="mt-5">
-              <span className="mb-2 block text-sm font-semibold">SMS code</span>
-              <CodeBoxes value={code} onChange={setCode} autoFocus />
-              <p className="mt-4 flex items-center gap-2 text-sm font-semibold text-accent-pink">
-                <CheckIcon width={18} height={18} />
-                Code sent to {phone}
-              </p>
-              <Button type="button" variant="secondary" className="mt-5" disabled={busy || resendIn > 0} onClick={requestCode}>
-                {resendIn > 0 ? `Send a new code (${resendIn}s)` : 'Send a new code'}
-              </Button>
-            </div>
-          )}
 
           <div className="mt-5">
             <ErrorText>{error}</ErrorText>
           </div>
 
           <div className="mt-auto pt-10">
-            <Button
-              type="submit"
-              disabled={busy || (codeSent ? code.length !== 6 : phone.replace(/\D/g, '').length < 10)}
-            >
-              {busy ? 'One sec…' : codeSent ? 'Verify' : 'Send code'}
+            <Button type="submit" disabled={busy || phone.replace(/\D/g, '').length < 10}>
+              {busy ? 'One sec…' : 'Continue'}
             </Button>
             <p className="mt-4 text-center text-sm leading-relaxed text-ink-dim">
               By continuing, you agree to our Terms and Privacy Policy.

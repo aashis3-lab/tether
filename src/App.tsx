@@ -1,10 +1,11 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import { InstallBanner } from './components/InstallBanner'
 import { SchemaCheck } from './components/SchemaCheck'
 import { Toaster } from './components/Toaster'
 import { Spinner } from './components/ui'
+import { ensurePushSubscription } from './lib/device'
 import { ActiveSession } from './screens/ActiveSession'
 import { DestinationScreen } from './screens/Destination'
 import { GuardianView } from './screens/GuardianView'
@@ -34,6 +35,15 @@ function RequireProfile({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
+/** Keeps this device registered for push while someone is signed in. */
+function PushSync() {
+  const { profile } = useAuth()
+  useEffect(() => {
+    if (profile) void ensurePushSubscription()
+  }, [profile])
+  return null
+}
+
 function AuthGate() {
   const { loading } = useAuth()
   if (loading) return <Spinner />
@@ -44,6 +54,7 @@ export default function App() {
   return (
     <AuthProvider>
       <SchemaCheck />
+      <PushSync />
       <Toaster />
       <InstallBanner />
       <Routes>

@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { normalizePhone } from '@/auth/phoneAuth'
+import { supabase } from '@/lib/supabase'
 import type { Contact } from '@/lib/types'
 import { CheckIcon } from './icons'
 import { Field } from './ui'
@@ -26,7 +28,7 @@ export function GuardianPicker({
       {heading && (
         <>
           <h2 className="text-lg font-semibold">Your guardian tonight</h2>
-          <p className="mb-3 text-ink-dim">A sober person who gets a text only if you need help.</p>
+          <p className="mb-3 text-ink-dim">A sober person on Tether who gets a notification only if you need help.</p>
         </>
       )}
 
@@ -81,6 +83,42 @@ export function GuardianPicker({
           />
         </div>
       )}
+
+      <Reachability phone={value.phone} name={value.name} />
     </div>
+  )
+}
+
+type Reach = 'ready' | 'no_push' | 'not_on_tether'
+
+/** Guardians get alerts as Tether notifications, so say if this one can't. */
+function Reachability({ phone, name }: { phone: string; name: string }) {
+  const [reach, setReach] = useState<Reach | null>(null)
+  const digits = phone.replace(/\D/g, '')
+
+  useEffect(() => {
+    setReach(null)
+    if (digits.length < 10) return
+    let live = true
+    const t = window.setTimeout(() => {
+      void supabase.rpc('guardian_reachability', { p_phone: normalizePhone(phone) }).then(({ data }) => {
+        if (live && data) setReach(data as Reach)
+      })
+    }, 400)
+    return () => {
+      live = false
+      window.clearTimeout(t)
+    }
+  }, [phone, digits.length])
+
+  if (!reach) return null
+  const who = name.trim() || 'Your guardian'
+  if (reach === 'ready') return <p className="mt-3 text-sm font-semibold text-status-calm">{who} is on Tether and will get alerts.</p>
+  return (
+    <p className="mt-3 rounded-xl2 bg-status-checkin/10 px-3 py-2 text-sm font-semibold text-status-checkin">
+      {reach === 'no_push'
+        ? `${who} is on Tether but has notifications off, so they won't get alerts.`
+        : `${who} isn't on Tether yet, so they won't get alerts. Ask them to sign up with this number.`}
+    </p>
   )
 }
