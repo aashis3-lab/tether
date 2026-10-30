@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react'
-import { displayPhone, parsePhone, phoneError } from '@/lib/phone'
 import { supabase } from '@/lib/supabase'
 import { geocode, getCurrentPosition } from '@/lib/geo'
 import type { Contact, LatLng, Profile } from '@/lib/types'
@@ -34,8 +33,6 @@ export function ProfileForm({
   )
   // contacts[0] is the primary emergency contact (emergency_contact_* columns);
   // the rest go in additional_emergency_contacts.
-  // Index of the phone field being typed in (its error waits for blur).
-  const [typing, setTyping] = useState<number | null>(null)
   const [contacts, setContacts] = useState<Contact[]>(() => [
     { name: initial?.emergency_contact_name ?? '', phone: initial?.emergency_contact_phone ?? '' },
     ...(initial?.additional_emergency_contacts ?? []),
@@ -49,10 +46,8 @@ export function ProfileForm({
   // Asked once: no home address -> "Add it for directions home?" before saving.
   const [askedHome, setAskedHome] = useState(Boolean(initial))
 
-  const primaryOk = contacts[0].name.trim() && parsePhone(contacts[0].phone)
-  // Every filled-in phone must be valid before saving.
-  const phonesOk = contacts.every((c) => !c.phone.trim() || parsePhone(c.phone))
-  const ready = Boolean(name.trim() && primaryOk && phonesOk)
+  const primaryOk = contacts[0].name.trim() && contacts[0].phone.trim()
+  const ready = Boolean(name.trim() && primaryOk)
 
   function updateContact(i: number, patch: Partial<Contact>) {
     setContacts((cs) => cs.map((c, j) => (j === i ? { ...c, ...patch } : c)))
@@ -102,9 +97,9 @@ export function ProfileForm({
       home_lat: coords?.lat ?? null,
       home_lng: coords?.lng ?? null,
       emergency_contact_name: primary.name.trim() || null,
-      emergency_contact_phone: parsePhone(primary.phone),
+      emergency_contact_phone: primary.phone.trim() || null,
       additional_emergency_contacts: extra
-        .map((c) => ({ name: c.name.trim(), phone: parsePhone(c.phone) ?? '' }))
+        .map((c) => ({ name: c.name.trim(), phone: c.phone.trim() }))
         .filter((c) => c.name && c.phone),
       medical_info: medical.trim() || null,
       avatar_url: avatarUrl,
@@ -133,21 +128,21 @@ export function ProfileForm({
             id="home-address"
           />
           {askedHome && !initial && !homeAddress.trim() && (
-            <div className="mt-3 rounded-xl border border-outline p-4" role="alert">
-              <p className="text-lg font-medium">Add your home address?</p>
+            <div className="mt-3 rounded-xl2 border-2 border-white/30 p-4" role="alert">
+              <p className="text-lg font-bold">Add your home address?</p>
               <p className="text-base text-ink-dim">It gives you one-tap directions home. Optional.</p>
               <div className="mt-3 grid grid-cols-2 gap-3">
-                <button type="button" onClick={() => document.getElementById('home-address')?.focus()} className="min-h-tap rounded-full bg-primary text-base font-medium text-primary-on">
+                <button type="button" onClick={() => document.getElementById('home-address')?.focus()} className="min-h-tap rounded-xl2 bg-white text-lg font-bold text-black">
                   Add it
                 </button>
-                <button type="submit" className="min-h-tap rounded-full border border-outline text-base font-medium text-primary-ink">
+                <button type="submit" className="min-h-tap rounded-xl2 border-2 border-white/40 text-lg font-bold">
                   Skip
                 </button>
               </div>
             </div>
           )}
           {(geocodeFailed || home) && (
-            <button type="button" onClick={useHere} disabled={locating} className="mt-1 min-h-[44px] text-sm font-semibold text-primary-ink">
+            <button type="button" onClick={useHere} disabled={locating} className="mt-1 min-h-[44px] text-sm font-semibold text-accent-pink">
               {locating ? 'Finding you…' : home ? '✓ Location saved' : "Use where I am right now instead"}
             </button>
           )}
@@ -156,7 +151,7 @@ export function ProfileForm({
 
       <div className="mt-8 flex flex-col gap-3">
         {contacts.map((c, i) => (
-          <div key={i} className="rounded-xl border border-danger-line bg-surface-high/70 px-4 pb-2 pt-3">
+          <div key={i} className="rounded-xl2 border border-danger-line bg-bg-card px-4 pb-2 pt-3">
             <div className="flex items-center justify-between">
               <p className="font-semibold">Emergency Contact{i > 0 ? ` ${i + 1}` : ''}</p>
               {i > 0 && (
@@ -184,24 +179,16 @@ export function ProfileForm({
               type="tel"
               value={c.phone}
               onChange={(e) => updateContact(i, { phone: e.target.value })}
-              onFocus={() => setTyping(i)}
-              onBlur={() => {
-                setTyping(null)
-                const e164 = parsePhone(c.phone)
-                if (e164) updateContact(i, { phone: displayPhone(e164) })
-              }}
               required={i === 0}
-              aria-invalid={Boolean(phoneError(c.phone, typing === i))}
               className="block h-11 w-full bg-transparent text-ink placeholder:text-ink-faint focus:outline-none"
             />
-            {phoneError(c.phone, typing === i) && <p className="pb-1 text-xs text-status-alert">{phoneError(c.phone, typing === i)}</p>}
           </div>
         ))}
       </div>
 
       <button
         type="button"
-        className="mt-3 flex min-h-tap items-center gap-2 self-start rounded-full px-2 text-sm font-medium text-primary-ink"
+        className="mt-3 flex min-h-[48px] items-center gap-2 self-start font-semibold text-ink underline underline-offset-4"
         onClick={() => setContacts((cs) => [...cs, { ...emptyContact }])}
       >
         <PlusIcon width={18} height={18} />

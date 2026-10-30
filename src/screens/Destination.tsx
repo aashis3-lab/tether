@@ -7,7 +7,7 @@ import { Button, Header, Screen, Title } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
 import { StartProgress } from './StartFlow'
 import { locationPermission, requestLocation } from '@/lib/device'
-import { distanceM, formatDistance, geocode, placeName, reverseGeocode } from '@/lib/geo'
+import { distanceM, formatDistance, placeName, reverseGeocode } from '@/lib/geo'
 import { updateDraft, useNightDraft, type Destination } from '@/lib/nightDraft'
 import { approximateLocation, nearbyPlacesLive, placesAvailable, recentDestinations, searchPlaces } from '@/lib/places'
 import type { LatLng } from '@/lib/types'
@@ -33,20 +33,15 @@ export function DestinationScreen() {
   const input = useRef<HTMLInputElement>(null)
   const recent = useRef(recentDestinations())
 
-  // Where to bias search and suggestions: you, else your saved home address
-  // (geocoded if it has no coordinates yet), and only with no home at all a
-  // rough IP-based location.
-  const savedHome =
+  // Where to bias search and suggestions: you, else your saved home, else
+  // a rough IP-based location.
+  const home =
     profile?.home_lat != null && profile?.home_lng != null ? { lat: profile.home_lat, lng: profile.home_lng } : null
-  const [geocodedHome, setGeocodedHome] = useState<LatLng | null>(null)
-  const home = savedHome ?? geocodedHome
   const [ipSpot, setIpSpot] = useState<LatLng | null>(null)
   const anchor = here ?? home ?? ipSpot
   useEffect(() => {
-    if (savedHome) return
-    if (profile?.home_address?.trim()) void geocode(profile.home_address.trim()).then(setGeocodedHome)
-    else void approximateLocation().then(setIpSpot)
-    // Only needed once.
+    if (!home) void approximateLocation().then(setIpSpot)
+    // Only needed once, when there's no saved home.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -115,13 +110,13 @@ export function DestinationScreen() {
 
   return (
     <Screen>
-      <Header title="Start a night" back="/" />
+      <Header title="Start a party" back="/" />
       <StartProgress step={1} />
       <Title>Where are you going?</Title>
-      <p className="mt-1 text-base text-ink-dim">Add one or more venues. Each becomes a pin your group can see.</p>
+      <p className="mt-1 text-lg text-ink-dim">Set your destination for the night.</p>
 
       {(adding || picked.length === 0) && (
-        <label className="mt-5 flex min-h-[56px] items-center gap-3 rounded-full bg-surface-high px-5 shadow-e1 focus-within:ring-2 focus-within:ring-primary">
+        <label className="mt-5 flex min-h-tap items-center gap-3 rounded-xl2 border border-white/15 bg-bg-card px-4">
           <SearchIcon width={20} height={20} className="shrink-0 text-ink-dim" />
           <input
             ref={input}
@@ -136,25 +131,25 @@ export function DestinationScreen() {
       )}
 
       {query.trim() ? (
-        <ul className="mt-3 flex flex-col divide-y divide-line/70 overflow-hidden rounded-2xl bg-surface-lowest dark:bg-surface-mid">
+        <ul className="mt-3 flex flex-col divide-y divide-white/5 rounded-xl2 bg-bg-card">
           {results.map((d) => (
             <PlaceRow key={d.name + d.address} d={d} icon={<PinIcon width={20} height={20} />} onClick={() => pick(d)} />
           ))}
-          {!searching && results.length === 0 && <li className="px-4 py-4 text-base text-ink-dim">No matches yet, try adding the city.</li>}
-          {searching && results.length === 0 && <li className="px-4 py-4 text-base text-ink-dim">Searching…</li>}
+          {!searching && results.length === 0 && <li className="px-4 py-4 text-ink-dim">No matches yet, try adding the city.</li>}
+          {searching && results.length === 0 && <li className="px-4 py-4 text-ink-dim">Searching…</li>}
         </ul>
       ) : (
         <>
           {picked.length > 0 && (
             <div className="mt-5 flex flex-col gap-2">
               {picked.map((d) => (
-                <div key={d.name + d.address} className="flex min-h-tap animate-enter items-center gap-3 rounded-2xl bg-primary-container/60 px-4 py-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-on">
+                <div key={d.name + d.address} className="flex min-h-tap items-center gap-3 rounded-xl2 border border-white/10 bg-bg-card px-4 py-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-pink/20 text-accent-pink">
                     <PinIcon width={18} height={18} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-lg font-medium text-primary-on-container">{d.name}</p>
-                    <p className="truncate text-xs text-primary-on-container/75">{d.address}</p>
+                    <p className="truncate text-lg font-semibold">{d.name}</p>
+                    <p className="truncate text-base text-ink-dim">{d.address}</p>
                   </div>
                   {picked.length > 1 ? (
                     <button
@@ -165,7 +160,7 @@ export function DestinationScreen() {
                       <XIcon width={18} height={18} />
                     </button>
                   ) : (
-                    <CheckCircleIcon width={22} height={22} className="shrink-0 text-primary-ink" />
+                    <CheckCircleIcon width={22} height={22} className="shrink-0 text-accent-pink" />
                   )}
                 </div>
               ))}
@@ -178,16 +173,16 @@ export function DestinationScreen() {
                 setAdding(true)
                 window.setTimeout(() => input.current?.focus(), 0)
               }}
-              className={`mt-3 ${buttonClass('secondary')}`}
+              className={`mt-4 ${buttonClass('secondary')}`}
             >
-              Add another place
+              Add Destination
             </button>
           )}
 
           {(
             <>
-              <p className="section-title mt-2">Suggestions</p>
-              <ul className="flex flex-col divide-y divide-line/70 overflow-hidden rounded-2xl bg-surface-lowest dark:bg-surface-mid">
+              <p className="mb-2 mt-6 text-sm font-semibold uppercase tracking-wide text-ink-faint">Suggestions</p>
+              <ul className="flex flex-col divide-y divide-white/5 rounded-xl2 bg-bg-card">
                 {current && !picked.some((p) => same(p, current)) ? (
                   <PlaceRow d={current} icon={<CrosshairIcon />} onClick={() => pick(current)} />
                 ) : !current ? (
@@ -197,23 +192,23 @@ export function DestinationScreen() {
                       disabled={locState === 'locating' || locState === 'checking'}
                       className="flex min-h-tap w-full items-center gap-3 px-4 py-3 text-left"
                     >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-me/15 text-me">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-pink/15 text-accent-pink">
                         <CrosshairIcon />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-lg font-medium">
+                        <span className="block font-semibold">
                           {locState === 'locating' || locState === 'checking'
                             ? 'Finding you…'
                             : locState === 'ask'
                               ? 'Use my current location'
                               : 'Turn on location for nearby places'}
                         </span>
-                        <span className="block text-xs text-ink-dim">
+                        <span className="block text-base text-ink-dim">
                           {locState === 'denied'
-                            ? `Location is blocked${home ? ', showing places near your home' : ''}. Turn it on in your phone settings, then tap here.`
+                            ? 'Location is blocked. Turn it on in your phone settings, then tap here.'
                             : locState === 'off'
-                              ? `Location is off${home ? ', showing places near your home' : ''}. Tap to try again.`
-                              : home
+                              ? 'Location is off. Tap to try again.'
+                              : home && locState === 'ask'
                                 ? 'Showing places near your home for now'
                                 : 'Also suggests places near you'}
                         </span>
@@ -236,10 +231,8 @@ export function DestinationScreen() {
         </>
       )}
 
-      {/* Pinned to the bottom like steps 2-4, even under a long suggestion list. */}
-      <div className="sticky bottom-0 -mx-4 mt-auto bg-gradient-to-t from-surface via-surface to-surface/0 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-6">
+      <div className="mt-auto pt-8">
         <Button
-          big
           disabled={picked.length === 0}
           onClick={() => {
             updateDraft({ destinations: picked })
@@ -267,12 +260,12 @@ function PlaceRow({ d, icon, meta, onClick }: { d: Destination; icon: ReactNode;
   return (
     <li>
       <button onClick={onClick} className="flex min-h-tap w-full items-center gap-3 px-4 py-3 text-left">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-high text-ink-dim">{icon}</span>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/5 text-ink-dim">{icon}</span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-lg">{d.name}</span>
-          <span className="block truncate text-xs text-ink-dim">{d.address}</span>
+          <span className="block truncate font-semibold">{d.name}</span>
+          <span className="block truncate text-base text-ink-dim">{d.address}</span>
         </span>
-        {meta && <span className="shrink-0 text-xs text-ink-dim">{meta}</span>}
+        {meta && <span className="shrink-0 text-base text-ink-dim">{meta}</span>}
       </button>
     </li>
   )

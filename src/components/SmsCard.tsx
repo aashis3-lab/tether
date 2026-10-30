@@ -75,12 +75,13 @@ export function SmsCard() {
   }
 
   return (
-    <div className="rounded-2xl bg-surface-lowest p-4 dark:bg-surface-mid">
-      <p className="text-base text-ink-dim">Your guardian gets a text when you press HELP, when an alert reaches them, and when everyone is home.</p>
+    <div className="mt-5 rounded-xl2 bg-bg-card p-4">
+      <p className="text-sm font-bold uppercase tracking-wide text-accent-orange">Text messages</p>
+      <p className="mt-1 text-base text-ink-dim">Your guardian gets a text when you press HELP, when an alert reaches them, and when everyone is home.</p>
       <button
         onClick={sendTest}
         disabled={busy}
-        className={`mt-3 ${buttonClass('tonal')}`}
+        className={`mt-3 ${buttonClass('primary')}`}
       >
         {busy ? 'Sending...' : 'Send test text'}
       </button>
@@ -94,7 +95,7 @@ export function SmsCard() {
         </p>
       )}
       {rows.length > 0 && (
-        <ul className="mt-3 divide-y divide-line/70">
+        <ul className="mt-3 divide-y divide-white/5">
           {rows.map((r) => (
             <li key={r.id} className="py-2 text-sm">
               <p className="flex justify-between gap-2">

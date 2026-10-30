@@ -13,7 +13,6 @@ import {
 import { AlertOverlay } from '@/components/AlertOverlay'
 import { BackTapSteps } from '@/components/BackTapSteps'
 import { isIOS } from '@/lib/device'
-import { parsePhone, phoneError, PHONE_ERROR } from '@/lib/phone'
 import { PermissionsFlow } from '@/components/PermissionsPage'
 import { ProfileForm } from '@/components/ProfileForm'
 import { CodeBoxes } from '@/components/CodeBoxes'
@@ -76,15 +75,11 @@ export function SignUp() {
 
   async function requestCode() {
     unlockAudio()
-    const normalized = parsePhone(phone)
-    if (!normalized) {
-      setError(PHONE_ERROR)
-      return
-    }
     setBusy(true)
     setError('')
     setCode('')
     try {
+      const normalized = normalizePhone(phone)
       setPhone(formatPhone(normalized))
       setMockCode(await sendCode(normalized))
       setCodeSent(true)
@@ -126,7 +121,7 @@ export function SignUp() {
     ''
 
   return (
-    <Screen className="pt-[max(2rem,env(safe-area-inset-top))]">
+    <Screen className="pt-[max(3rem,env(safe-area-inset-top))]">
       {step === 'verify' && (
         <form onSubmit={submit} className="flex flex-1 flex-col">
           {mockCode && <MockSmsBanner code={mockCode} />}
@@ -145,20 +140,16 @@ export function SignUp() {
                 setMockCode(null)
               }
             }}
-            placeholder="(555) 123-4567"
+            placeholder="+1 (555) 123-4567"
             required
             autoFocus
-            aria-invalid={Boolean(phoneError(phone))}
           />
-          {phoneError(phone) && phone.replace(/\D/g, '').length >= 10 && (
-            <p className="mt-1.5 px-1 text-xs text-status-alert">{PHONE_ERROR}</p>
-          )}
 
           {codeSent && (
             <div className="mt-5">
-              <span className="mb-1.5 block text-xs font-medium text-ink-dim">SMS code</span>
+              <span className="mb-2 block text-sm font-semibold">SMS code</span>
               <CodeBoxes value={code} onChange={setCode} autoFocus />
-              <p className="mt-4 flex items-center gap-2 text-sm font-semibold text-primary-ink">
+              <p className="mt-4 flex items-center gap-2 text-sm font-semibold text-accent-pink">
                 <CheckIcon width={18} height={18} />
                 {mockCode ? 'Code received' : `Code sent to ${phone}`}
               </p>
@@ -175,7 +166,7 @@ export function SignUp() {
           <div className="mt-auto pt-10">
             <Button
               type="submit"
-              disabled={busy || (codeSent ? code.length !== 6 : !parsePhone(phone))}
+              disabled={busy || (codeSent ? code.length !== 6 : phone.replace(/\D/g, '').length < 10)}
             >
               {busy ? 'One sec…' : codeSent ? 'Verify' : 'Send code'}
             </Button>
@@ -188,7 +179,7 @@ export function SignUp() {
 
       {step === 'profile' && userId && (
         <div className="flex flex-1 flex-col">
-          <Title className="mb-6">About you</Title>
+          <Title className="mb-6">About You</Title>
           <ProfileForm
             userId={userId}
             phone={sessionPhone}
@@ -206,13 +197,13 @@ export function SignUp() {
       {step === 'practiceIntro' && (
         <div className="flex flex-1 flex-col">
           <div className="flex flex-1 flex-col items-center justify-center text-center">
-            <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-primary-container text-primary-on-container">
+            <div className="mb-6 flex h-28 w-28 items-center justify-center rounded-full bg-danger text-white">
               <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M7 4.5v15l12-7.5-12-7.5Z" strokeLinejoin="round" />
               </svg>
             </div>
-            <h1 className="text-2xl font-semibold tracking-tight">Try it first</h1>
-            <p className="mt-3 max-w-xs text-base text-ink-dim">
+            <h1 className="text-[2rem] font-bold leading-tight tracking-tight">Try it first</h1>
+            <p className="mt-3 max-w-xs text-lg text-ink-dim">
               A 20-second rehearsal shows a ping, a shared location and how you answer.
             </p>
           </div>
@@ -233,8 +224,8 @@ export function SignUp() {
 
       {step === 'backtap' && (
         <div className="flex flex-1 flex-col">
-          <h1 className="text-2xl font-semibold tracking-tight">Open Tether with a double tap</h1>
-          <p className="mb-5 mt-2 text-base text-ink-dim">
+          <h1 className="text-[2rem] font-bold leading-tight tracking-tight">Open Tether with a double tap</h1>
+          <p className="mb-5 mt-2 text-lg text-ink-dim">
             Set up iPhone Back Tap so two taps on the back of your phone open Tether, no unlocking and searching.
           </p>
           <BackTapSteps />
@@ -257,10 +248,10 @@ function MockSmsBanner({ code }: { code: string }) {
   // Stands in for the real SMS in mock auth mode, styled like an iOS banner.
   return (
     <div className="fixed inset-x-0 top-[max(0.5rem,env(safe-area-inset-top))] z-[3000] flex justify-center px-3">
-      <div className="w-full max-w-[400px] rounded-2xl bg-surface-lowest p-4 text-ink shadow-e3">
-        <p className="text-xs font-medium text-ink-dim">Messages · now</p>
+      <div className="w-full max-w-[400px] rounded-2xl bg-white/95 p-4 text-black shadow-lg">
+        <p className="text-xs font-semibold uppercase text-black/50">Messages · now</p>
         <p className="mt-1 font-medium">Your Tether code is {code}</p>
-        {AUTH_MODE === 'mock' && <p className="mt-1 text-xs text-ink-dim">Demo mode, no real SMS sent</p>}
+        {AUTH_MODE === 'mock' && <p className="mt-1 text-xs text-black/50">Demo mode, no real SMS sent</p>}
       </div>
     </div>
   )
@@ -306,8 +297,8 @@ function PracticeAlert({ onDone, onBack }: { onDone: () => void; onBack: () => v
     return (
       <div className="flex flex-1 flex-col">
         <div className="flex flex-1 flex-col items-center justify-center text-center">
-          <h1 className="text-3xl font-semibold">Time's up</h1>
-          <p className="mt-3 text-base text-ink-dim">No worries, try the practice again, or go back.</p>
+          <h1 className="text-3xl font-bold">Time's up</h1>
+          <p className="mt-3 text-lg text-ink-dim">No worries, try the practice again, or go back.</p>
         </div>
         <div className="flex flex-col gap-3">
           <Button
@@ -328,18 +319,18 @@ function PracticeAlert({ onDone, onBack }: { onDone: () => void; onBack: () => v
 
   // "You're ready", the whole screen goes green.
   return (
-    <div className="fixed inset-0 z-[1500] flex animate-fade-in justify-center bg-safe text-black">
+    <div className="fixed inset-0 z-[1500] flex justify-center bg-status-calm text-black">
       <div className="flex w-full max-w-app flex-col px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(3rem,env(safe-area-inset-top))]">
         <div className="flex flex-1 flex-col items-center justify-center text-center">
           <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-black/15">
             <CheckIcon width={48} height={48} />
           </div>
-          <h1 className="text-4xl font-semibold">You're ready.</h1>
-          <p className="mt-3 text-lg">
+          <h1 className="text-4xl font-extrabold">You're ready.</h1>
+          <p className="mt-3 text-xl font-medium">
             That's exactly what a real alert looks like. Sam would now see: “You're on it.”
           </p>
         </div>
-        <button onClick={onDone} className="min-h-[56px] w-full rounded-full bg-black text-lg font-medium text-white active:scale-[0.98]">
+        <button onClick={onDone} className="min-h-tap w-full rounded-xl2 bg-black text-xl font-bold text-white active:scale-[0.98]">
           Done
         </button>
       </div>

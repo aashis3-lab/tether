@@ -1,77 +1,73 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type L from 'leaflet'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { AddPlaceSheet } from '@/components/AddPlaceSheet'
-import { AlertTriangleIcon, CrosshairIcon, GearIcon, MoonIcon, PinIcon, SendIcon, UserCheckIcon, UsersIcon } from '@/components/icons'
+import { Avatar } from '@/components/Avatar'
+import { BottomSheet, type SheetSnap } from '@/components/BottomSheet'
+import { GroupWidget } from '@/components/GroupWidget'
+import { AlertTriangleIcon, CrosshairIcon, GearIcon, PinIcon, PlusIcon, SendIcon, ShieldIcon, UserCheckIcon, XIcon } from '@/components/icons'
 import { IncomingAlerts } from '@/components/IncomingAlerts'
 import { LocationFix } from '@/components/LocationFix'
 import { MapView } from '@/components/MapView'
 import { MemberCard } from '@/components/MemberCard'
-import { PartyWatch } from '@/components/PartyWatch'
-import { PeoplePanel } from '@/components/PeoplePanel'
 import { PinSheet } from '@/components/PinSheet'
-import { Button, ErrorText, Field, Sheet } from '@/components/ui'
+import { Button, ErrorText, Field } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
-import { claimerName, raiseAlert } from '@/lib/alerts'
+import { WalletSheet } from '@/components/WalletSheet'
+import { claimerName } from '@/lib/alerts'
 import { firstName } from '@/lib/format'
 import { placeName, reverseGeocode } from '@/lib/geo'
-import { LOCATION_OFF } from '@/lib/status'
+import { groupState } from '@/lib/status'
 import { supabase } from '@/lib/supabase'
-import { toast, tryOrToast } from '@/lib/toast'
-import { withViewTransition } from '@/lib/transition'
+import { formatClock } from '@/lib/time'
 import type { LatLng } from '@/lib/types'
-import { useElementHeight } from '@/hooks/useElementHeight'
-import { useSwipe } from '@/hooks/useSwipe'
 import { useSessionCtx } from './session/context'
 
 /**
- * The party screen. Members who are home (or ended their night) watch the
- * party read-only; everyone else gets the full party view.
+ * Active party, Find My-style: full-screen map, the group widget on top (the
+ * only place statuses live), and a sheet with PING / HELP / Update.
  */
 export function ActiveSession() {
-  const { me } = useSessionCtx()
-  if (me?.status === 'home') return <ObservingView />
-  return <PartyView />
-}
-
-/**
- * Active party: people panel on top (faces with status badges, tap for the
- * full list), the map in the middle, and a safety panel at the bottom with
- * only Find me / Status / HELP, plus a slim bar for Settings, Invite and the
- * party menu.
- */
-function PartyView() {
   const { userId } = useAuth()
   const navigate = useNavigate()
   const { session, members, pins, alerts, checkIns, me, profile, myPos, gpsStatus, retryGps, avatars, phones } = useSessionCtx()
   const [cardId, setCardId] = useState<string | null>(null)
   const cardMember = members.find((m) => m.id === cardId) ?? null
-  const [bigPanel, setBigPanel] = useState(false)
-  const panelSwipe = useSwipe({ onTap: () => setBigPanel((b) => !b), onUp: () => setBigPanel(true), onDown: () => setBigPanel(false) })
+  const [snap, setSnap] = useState<SheetSnap>('collapsed')
+  const [sheetH, setSheetH] = useState(200)
+  const [wallet, setWallet] = useState(false)
   const [recenter, setRecenter] = useState(0)
   const [addOpen, setAddOpen] = useState(false)
   const [picking, setPicking] = useState(false)
   const [editPinId, setEditPinId] = useState<string | null>(null)
+  // Right after starting a party (or while you're the only one in it), nudge
+  // toward inviting friends instead of a separate "Start this night" step.
+  const justStarted = Boolean((useLocation().state as { invitePrompt?: boolean } | null)?.invitePrompt)
+  const [inviteDismissed, setInviteDismissed] = useState(false)
+  const showInvite = !inviteDismissed && (justStarted || members.length === 1)
   const mapRef = useRef<L.Map | null>(null)
+  // Height of the summary bar + banners, so the map fits everyone below it.
   const topRef = useRef<HTMLDivElement>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const topH = useElementHeight(topRef, picking)
-  const bottomH = useElementHeight(bottomRef, picking)
+  const [topH, setTopH] = useState(140)
+  useEffect(() => {
+    const el = topRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setTopH(el.offsetHeight))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [picking])
   const onReady = useCallback((m: L.Map) => {
     mapRef.current = m
   }, [])
 
+  const summary = groupState(members, alerts, me?.id)
   const myAlert = alerts.find((a) => a.member_id === me?.id && a.type === 'manual')
   const myClaimer = myAlert ? claimerName(myAlert, members) : null
   const home =
     profile?.home_lat != null && profile?.home_lng != null ? { lat: profile.home_lat, lng: profile.home_lng } : null
   const base = `/session/${session.id}`
   const editPin = pins.find((p) => p.id === editPinId) ?? null
-  const partyName = session.name ?? pins[0]?.name ?? 'Night out'
-  // Friends with an open alert get a pulsing ring on the map.
-  const highlightIds = alerts.filter((a) => !a.resolved && a.member_id !== me?.id).map((a) => a.member_id)
-  const openMember = (id: string) => withViewTransition(() => setCardId(id))
 
   function startPicking(at?: LatLng) {
     setAddOpen(false)
@@ -79,36 +75,10 @@ function PartyView() {
     if (at) mapRef.current?.panTo([at.lat, at.lng])
   }
 
-  // Find me sends straight away. With nobody else in the party there's no one
-  // to ping, so offer to invite friends or alert the guardian instead.
-  const [findBusy, setFindBusy] = useState(false)
-  const [soloOpen, setSoloOpen] = useState(false)
-  async function findMe() {
-    if (!me || findBusy) return
-    if (members.length <= 1) {
-      setSoloOpen(true)
-      return
-    }
-    if (myAlert) {
-      navigate(`${base}/ping`)
-      return
-    }
-    setFindBusy(true)
-    const ok = await tryOrToast("Couldn't send Find me", () => raiseAlert(me.id, 'ping'))
-    setFindBusy(false)
-    if (ok) toast(myPos ? 'Sent to your group with your location.' : `Sent. ${LOCATION_OFF}`, myPos ? 'success' : 'error')
-  }
-  async function alertGuardianInstead() {
-    if (!me) return
-    setSoloOpen(false)
-    const ok = await tryOrToast("Couldn't alert your guardian", () => raiseAlert(me.id, 'alert'))
-    if (ok) navigate(`${base}/ping`)
-  }
-
   return (
     <>
-      {/* Map in the middle (full-screen behind the panels). */}
-      <div className="fixed inset-0 z-0 flex justify-center bg-surface">
+      {/* Full-screen map background. */}
+      <div className="fixed inset-0 z-0 flex justify-center bg-bg">
         <div className="relative isolate h-full w-full max-w-app">
           <MapView
             members={members}
@@ -118,19 +88,18 @@ function PartyView() {
             fitMode="auto"
             fitPaused={picking}
             recenterSignal={recenter}
-            bottomPad={picking ? 0 : bottomH}
+            bottomPad={picking ? 0 : sheetH}
             topPad={picking ? 0 : topH}
-            onMemberClick={openMember}
+            onMemberClick={(id) => setCardId(id)}
             onLongPress={(p) => startPicking(p)}
             onPinClick={(id) => setEditPinId(id)}
             onReady={onReady}
             avatars={avatars}
-            highlightIds={highlightIds}
           />
           {picking && (
             <div className="pointer-events-none absolute inset-0 z-[600] flex items-center justify-center">
               {/* Fixed pin; its tip marks the spot. */}
-              <PinIcon width={48} height={48} strokeWidth={2} className="-translate-y-6 fill-primary/20 text-primary drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]" />
+              <PinIcon width={52} height={52} className="-translate-y-6 text-accent-pink drop-shadow-[0_3px_8px_rgba(0,0,0,0.9)]" />
             </div>
           )}
         </div>
@@ -145,116 +114,140 @@ function PartyView() {
         />
       ) : (
         <>
-          {/* Top panel: people. */}
+          {/* Summary bar: the group's state in one colored line. */}
           <div className="pointer-events-none fixed inset-x-0 top-0 z-[800] flex justify-center">
             <div ref={topRef} className="w-full max-w-app px-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
-              <PeoplePanel
-                title={partyName}
-                endTime={session.end_time}
-                members={members}
-                me={me}
-                checkIns={checkIns}
-                avatars={avatars}
-                phones={phones}
-                myPos={myPos}
-                onInvite={() => navigate(`${base}/invite`)}
-                onMember={openMember}
-                footer={
-                  <button onClick={() => setAddOpen(true)} className="flex h-10 items-center gap-2 rounded-full px-1 text-sm font-semibold text-primary-ink">
-                    <PinIcon width={18} height={18} /> Add a place
-                  </button>
-                }
-              />
+              <div className="pointer-events-auto">
+                <GroupWidget members={members} me={me} checkIns={checkIns} avatars={avatars} myPos={myPos} state={summary} partyName={session.name ?? pins[0]?.name ?? null} onMemberTap={(m) => setCardId(m.id)} />
+              </div>
+              <div className="mt-2 flex justify-end">
+                <button
+                  onClick={() => setWallet(true)}
+                  className="pointer-events-auto flex min-h-[44px] items-center gap-2 rounded-full border border-white/20 bg-bg-card/95 px-4 text-base font-bold shadow-lg backdrop-blur active:scale-95"
+                >
+                  <ShieldIcon width={18} height={18} /> Safety card
+                </button>
+              </div>
               <div className="pointer-events-auto mt-2">
                 <IncomingAlerts alerts={alerts} members={members} me={me} userId={userId} position={myPos} mode="banners" />
               </div>
             </div>
           </div>
 
-          {/* Recenter, floating just above the safety panel. */}
-          <div className="pointer-events-none fixed inset-x-0 z-[850] flex justify-center" style={{ bottom: bottomH + 12 }}>
-            <div className="flex w-full max-w-app justify-end px-4">
-              <button
-                aria-label="Show everyone"
-                title="Show everyone"
-                onClick={() => setRecenter((n) => n + 1)}
-                className="glass pointer-events-auto flex h-12 w-12 items-center justify-center rounded-2xl text-me shadow-e2 active:scale-95"
-              >
-                <CrosshairIcon width={22} height={22} />
-              </button>
-            </div>
-          </div>
-
-          {/* Bottom: the safety panel (tap or swipe the handle to make it bigger), then a slim bar. */}
-          <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[900] flex justify-center">
-            <div ref={bottomRef} className="pointer-events-auto relative z-10 w-full max-w-app rounded-t-[28px] bg-surface-low shadow-[0_-2px_12px_rgb(0_0_0/0.12)]">
-              <button
-                {...panelSwipe}
-                aria-label={bigPanel ? 'Make the safety buttons smaller' : 'Make the safety buttons bigger'}
-                aria-expanded={bigPanel}
-                className="flex h-6 w-full items-center justify-center"
-              >
-                <span className="h-1 w-10 rounded-full bg-outline/50" />
-              </button>
-              <div className="px-3">
-                <div className="mb-2 empty:hidden">
-                  <LocationFix status={gpsStatus} onRetry={retryGps} />
+          {showInvite && snap === 'collapsed' && (
+            <div className="pointer-events-none fixed inset-x-0 z-[860] flex justify-center" style={{ bottom: sheetH + 72 }}>
+              <div className="pointer-events-auto mx-3 w-full max-w-[calc(430px-1.5rem)] animate-enter rounded-2xl bg-bg-raised/95 p-4 shadow-[0_8px_30px_rgba(0,0,0,0.6)] backdrop-blur">
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xl font-bold">{justStarted ? 'Your party is live!' : 'Just you so far'}</p>
+                    <p className="mt-0.5 text-base text-ink-dim">Invite friends so Tether can watch out for everyone.</p>
+                  </div>
+                  <button
+                    aria-label="Dismiss"
+                    onClick={() => setInviteDismissed(true)}
+                    className="-mr-2 -mt-2 flex h-11 w-11 shrink-0 items-center justify-center text-ink-dim"
+                  >
+                    <XIcon width={20} height={20} />
+                  </button>
                 </div>
+                <button onClick={() => navigate(`${base}/invite`)} className={`mt-3 ${buttonClass('primary')}`}>
+                  Invite friends
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Map buttons, floating just above the sheet. */}
+          {snap !== 'full' && (
+            <div className="pointer-events-none fixed inset-x-0 z-[850] flex justify-center" style={{ bottom: sheetH + 12 }}>
+              <div className="flex w-full max-w-app justify-end gap-2 px-4">
+                <button
+                  onClick={() => setAddOpen(true)}
+                  className="pointer-events-auto flex min-h-[48px] items-center gap-2 rounded-full bg-bg-card/95 px-5 font-semibold shadow-lg backdrop-blur active:scale-95"
+                >
+                  <PlusIcon width={18} height={18} /> Add place
+                </button>
+                <button
+                  aria-label="Show everyone"
+                  onClick={() => setRecenter((n) => n + 1)}
+                  className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full bg-bg-card/95 shadow-lg backdrop-blur active:scale-95"
+                >
+                  <CrosshairIcon width={20} height={20} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          <BottomSheet
+            snap={snap}
+            onSnap={setSnap}
+            onHeight={setSheetH}
+            header={
+              <div className="pb-1">
                 {myAlert && (
                   <button
                     onClick={() => navigate(`${base}/ping`)}
-                    className="mb-2 flex w-full items-center gap-2 truncate rounded-xl bg-status-alert/10 px-3 py-2 text-left text-sm font-medium text-status-alert"
+                    className="mb-3 w-full truncate rounded-lg bg-status-alert/15 px-3 py-2 text-left text-sm font-semibold text-status-alert"
                   >
-                    <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-status-alert" />
-                    <span className="min-w-0 flex-1 truncate">
-                      {myClaimer
-                        ? `${firstName(myClaimer)} is on it`
-                        : myAlert.level === 'ping'
-                          ? 'Find me sent, waiting for a friend'
-                          : 'Help request sent'}
-                      {!myPos ? ' · your location is off' : ''}
-                    </span>
-                    <span className="shrink-0">Open</span>
+                    {myClaimer ? `${firstName(myClaimer)} is on it` : 'Help request sent'} · Open
                   </button>
                 )}
-                <div className="grid grid-cols-[1fr_1.2fr_1fr] items-end gap-2">
-                  <SafetyButton
-                    label="Find me"
-                    icon={<SendIcon width={bigPanel ? 34 : 28} height={bigPanel ? 34 : 28} strokeWidth={2.25} />}
-                    className="bg-findme text-black"
-                    disabled={findBusy}
-                    size={bigPanel ? 'xl' : 'md'}
-                    onClick={() => void findMe()}
-                  />
-                  <SafetyButton
-                    label="HELP"
-                    icon={<AlertTriangleIcon width={bigPanel ? 38 : 30} height={bigPanel ? 38 : 30} strokeWidth={2.25} />}
-                    className="bg-danger text-white shadow-e3"
-                    size={bigPanel ? 'xxl' : 'lg'}
-                    onClick={() => navigate(`${base}/help`)}
-                  />
-                  <SafetyButton
-                    label="Status"
-                    icon={<UserCheckIcon width={bigPanel ? 34 : 28} height={bigPanel ? 34 : 28} strokeWidth={2.25} />}
-                    className="bg-[#1a73e8] text-white"
-                    size={bigPanel ? 'xl' : 'md'}
-                    onClick={() => navigate(`${base}/update`)}
-                  />
+                {/* Find me, HELP, Status: labeled round buttons, HELP biggest. */}
+                <div className="flex items-start justify-center gap-7 py-1">
+                  <button onClick={() => navigate(`${base}/ping`)} className="flex w-20 flex-col items-center gap-1.5 active:scale-95">
+                    <span className="flex h-16 w-16 items-center justify-center rounded-full bg-findme text-black shadow-lg">
+                      <SendIcon width={28} height={28} strokeWidth={2.25} />
+                    </span>
+                    <span className="text-base font-bold">Find me</span>
+                  </button>
+                  <button onClick={() => navigate(`${base}/help`)} className="flex w-24 flex-col items-center gap-1.5 active:scale-95">
+                    <span className="flex h-[84px] w-[84px] items-center justify-center rounded-full bg-danger text-white shadow-[0_0_24px_-4px_rgba(224,30,30,0.8)]">
+                      <AlertTriangleIcon width={40} height={40} className="text-white" />
+                    </span>
+                    <span className="text-lg font-extrabold tracking-wide text-status-alert">HELP</span>
+                  </button>
+                  <button onClick={() => navigate(`${base}/update`)} className="flex w-20 flex-col items-center gap-1.5 active:scale-95">
+                    <span className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-white/40 bg-bg-card text-ink shadow-lg">
+                      <UserCheckIcon width={28} height={28} strokeWidth={2} />
+                    </span>
+                    <span className="text-base font-bold">Status</span>
+                  </button>
                 </div>
-                {/* End my night: always here, muted (not red, not pink). */}
-                <button
-                  onClick={() => navigate(`${base}/home`)}
-                  className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-surface-highest text-base font-bold text-ink-dim active:scale-[0.99]"
-                >
-                  <MoonIcon width={18} height={18} /> End my night
-                </button>
               </div>
-              <nav aria-label="Party" className="mt-2 grid grid-cols-2 border-t border-line/70 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1">
-                <BarButton label="Profile" icon={<GearIcon width={22} height={22} />} onClick={() => navigate('/profile')} />
-                <BarButton label="Invite" icon={<UsersIcon width={22} height={22} />} onClick={() => navigate(`${base}/invite`)} />
-              </nav>
+            }
+          >
+            <LocationFix status={gpsStatus} onRetry={retryGps} />
+
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <button onClick={() => navigate(`${base}/invite`)} className={buttonClass('primary')}>
+                Invite friends
+              </button>
+              <button onClick={() => navigate(`${base}/home`)} className={buttonClass('secondary')}>
+                End my night
+              </button>
             </div>
-          </div>
+
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <button onClick={() => navigate('/settings')} className="flex min-h-tap flex-col items-center justify-center gap-1 rounded-xl2 bg-bg-card py-2 text-sm font-semibold">
+                <Avatar name={profile?.name ?? me?.name ?? '?'} url={profile?.avatar_url} size={28} />
+                Profile
+              </button>
+              <button onClick={() => navigate('/settings')} className="flex min-h-tap flex-col items-center justify-center gap-1 rounded-xl2 bg-bg-card py-2 text-sm font-semibold">
+                <GearIcon width={24} height={24} />
+                Settings
+              </button>
+              <button onClick={() => setWallet(true)} className="flex min-h-tap flex-col items-center justify-center gap-1 rounded-xl2 bg-bg-card py-2 text-sm font-semibold">
+                <ShieldIcon width={24} height={24} />
+                Safety card
+              </button>
+            </div>
+
+            <p className="mt-4 text-center text-base text-ink-faint">Party ends {formatClock(session.end_time)}</p>
+            <div className="mt-3 flex items-center justify-center gap-2 text-ink-faint">
+              <img src="/icons/logo-mark.png" alt="" className="h-6 w-auto" />
+              <span className="font-bold tracking-tight">tether</span>
+            </div>
+          </BottomSheet>
         </>
       )}
 
@@ -277,99 +270,14 @@ function PartyView() {
           phone={phones[cardMember.id] ?? null}
           myPos={myPos}
           isMe={cardMember.id === me?.id}
-          onClose={() => withViewTransition(() => setCardId(null))}
+          onClose={() => setCardId(null)}
         />
       )}
 
-      <Sheet open={soloOpen} onClose={() => setSoloOpen(false)} title="No one else is in your party yet">
-        <p className="text-base text-ink-dim">Find me goes to your friends in the party. Invite them, or alert your guardian now.</p>
-        {!myPos && <p className="mt-3 rounded-xl bg-status-checkin/10 px-4 py-3 text-base font-medium text-status-checkin">{LOCATION_OFF}</p>}
-        <button onClick={() => navigate(`${base}/invite`)} className={`mt-4 ${buttonClass('primary')}`}>
-          <UsersIcon width={18} height={18} /> Invite friends
-        </button>
-        <button onClick={() => void alertGuardianInstead()} className={`mt-2 ${buttonClass('secondary')}`}>
-          Alert my guardian instead
-        </button>
-      </Sheet>
-
+      <WalletSheet open={wallet} onClose={() => setWallet(false)} profile={profile} me={me} />
     </>
   )
 }
-
-/**
- * Read-only party for members who are home (or ended their night): the map,
- * everyone's faces and statuses, live. Only action: call someone.
- */
-function ObservingView() {
-  const navigate = useNavigate()
-  const { session, members, pins, me, avatars, phones } = useSessionCtx()
-  const stillOut = members.filter((m) => m.status !== 'home').length
-  const leave = () => navigate('/', { replace: true })
-  return (
-    <PartyWatch
-      partyName={session.name ?? pins[0]?.name ?? 'the party'}
-      endTime={session.end_time}
-      members={members}
-      pins={pins}
-      avatars={avatars}
-      phones={phones}
-      meId={me?.id}
-      onExit={leave}
-      bottom={
-        <>
-          <p className="text-center text-sm text-ink-dim">
-            You're home ✓ · {stillOut ? `${stillOut} still out` : 'everyone is home'}
-          </p>
-          <button onClick={leave} className={`mt-3 ${buttonClass('secondary')}`}>
-            Leave party view
-          </button>
-        </>
-      }
-    />
-  )
-}
-
-
-/** Big, bright, one-tap safety button: icon + one word. */
-function SafetyButton({
-  label,
-  icon,
-  className,
-  onClick,
-  disabled,
-  size,
-}: {
-  label: string
-  icon: ReactNode
-  className: string
-  onClick: () => void
-  disabled?: boolean
-  size: 'md' | 'lg' | 'xl' | 'xxl'
-}) {
-  const h = { md: 'min-h-[92px]', lg: 'min-h-[112px]', xl: 'min-h-[132px]', xxl: 'min-h-[156px]' }[size]
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`flex flex-col items-center justify-center gap-1.5 rounded-[24px] shadow-e1 transition-[min-height] duration-300 active:scale-[0.97] disabled:opacity-60 ${h} ${className}`}
-    >
-      {icon}
-      <span className={`font-bold tracking-wide ${size === 'xl' || size === 'xxl' ? 'text-xl' : 'text-lg'}`}>{label}</span>
-    </button>
-  )
-}
-
-/** Slim bottom-bar item, same style as the home tab bar. */
-function BarButton({ label, icon, onClick }: { label: string; icon: ReactNode; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="flex min-h-[48px] flex-col items-center justify-center gap-0.5 text-ink-faint active:text-primary-ink">
-      {icon}
-      <span className="text-xs font-semibold">{label}</span>
-    </button>
-  )
-}
-
-
 
 /**
  * Uber-style "Pick on map": the pin stays fixed in the middle, you drag the
@@ -437,14 +345,14 @@ function PickOnMap({
     <>
       <div className="pointer-events-none fixed inset-x-0 top-0 z-[800] flex justify-center">
         <div className="w-full max-w-app px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
-          <p className="glass rounded-full px-4 py-3 text-center text-base font-medium shadow-e2">
+          <p className="rounded-2xl bg-bg-card/95 px-4 py-3 text-center font-semibold shadow-lg backdrop-blur">
             Drag the map to put the pin on the spot
           </p>
         </div>
       </div>
       <div className="fixed inset-x-0 bottom-0 z-[900] flex justify-center">
-        <div className="w-full max-w-app rounded-t-[28px] bg-surface-low p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-e3">
-          <p className="mb-3 truncate text-xs text-ink-dim">{address}</p>
+        <div className="w-full max-w-app rounded-t-3xl bg-bg-raised/95 p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgba(0,0,0,0.55)] backdrop-blur">
+          <p className="mb-3 truncate text-ink-dim">{address}</p>
           <Field
             label="Name"
             value={name}

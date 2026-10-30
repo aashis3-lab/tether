@@ -170,7 +170,7 @@ export function PermissionsFlow({ onDone }: { onDone: () => void }) {
       <div className="flex items-center gap-3">
         <div className="flex flex-1 gap-1.5">
           {ORDER.map((k, i) => (
-            <span key={k} className={`h-1.5 flex-1 rounded-full ${i <= index ? 'bg-accent-pink' : 'bg-ink/15'}`} />
+            <span key={k} className={`h-1.5 flex-1 rounded-full ${i <= index ? 'bg-accent-pink' : 'bg-white/15'}`} />
           ))}
         </div>
         <p className="text-sm font-semibold text-ink-dim">
@@ -186,15 +186,15 @@ export function PermissionsFlow({ onDone }: { onDone: () => void }) {
             <div className="mb-6 flex h-28 w-28 items-center justify-center rounded-full bg-brand-br text-white">
               {copy.icon}
             </div>
-            <h1 className="text-2xl font-semibold tracking-tight">{copy.title}</h1>
-            <p className="mt-3 max-w-xs text-base text-ink-dim">{copy.why}</p>
+            <h1 className="text-[2rem] font-bold leading-tight tracking-tight">{copy.title}</h1>
+            <p className="mt-3 max-w-xs text-lg text-ink-dim">{copy.why}</p>
 
             {(phase === 'blocked' || phase === 'install') && fixKind && (
               <div className="mt-6 w-full text-left">
                 <p className="mb-2 font-semibold text-status-checkin">
                   {phase === 'install' ? 'One extra step on iPhone:' : 'It’s blocked right now. To turn it on:'}
                 </p>
-                <ol className="flex list-decimal flex-col gap-2 rounded-xl bg-surface-high/70 py-4 pl-9 pr-4">
+                <ol className="flex list-decimal flex-col gap-2 rounded-xl2 bg-bg-card py-4 pl-9 pr-4">
                   {permissionFixSteps(fixKind).map((s) => (
                     <li key={s}>{s}</li>
                   ))}
@@ -202,7 +202,7 @@ export function PermissionsFlow({ onDone }: { onDone: () => void }) {
               </div>
             )}
             {phase === 'insecure' && (
-              <p className="mt-6 rounded-xl bg-surface-high/70 p-4 text-status-checkin">
+              <p className="mt-6 rounded-xl2 bg-bg-card p-4 text-status-checkin">
                 Location only works over a secure (https://) link.
                 {import.meta.env.DEV && (
                   <>

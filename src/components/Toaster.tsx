@@ -1,6 +1,6 @@
 import { dismissToast, useToasts } from '@/lib/toast'
 
-/** Global toasts as Material snackbars, above everything and clear of the notch. */
+/** Renders global toasts above everything, clear of the notch. */
 export function Toaster() {
   const toasts = useToasts()
   if (toasts.length === 0) return null
@@ -11,10 +11,11 @@ export function Toaster() {
           <button
             key={t.id}
             onClick={() => dismissToast(t.id)}
-            className="pointer-events-auto flex animate-enter items-center gap-3 rounded-xl bg-inverse px-4 py-3 text-left text-base text-inverse-on shadow-e3"
+            className={`pointer-events-auto animate-enter rounded-2xl px-4 py-3 text-left font-semibold shadow-lg ${
+              t.kind === 'error' ? 'bg-status-alert text-white' : 'bg-status-calm text-black'
+            }`}
           >
-            <span className={`h-2 w-2 shrink-0 rounded-full ${t.kind === 'error' ? 'bg-danger' : 'bg-safe'}`} />
-            <span className="min-w-0 flex-1">{t.text}</span>
+            {t.text}
           </button>
         ))}
       </div>

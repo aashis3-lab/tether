@@ -1,9 +1,8 @@
-/** Default party end: 9:00 AM the next morning (per spec). */
+/** Default party end: 12 hours from now, rounded up to the next 15 minutes. */
 export function defaultEndTime(): Date {
-  const d = new Date()
-  // Before 5 AM you're still in "tonight": end at 9 AM today.
-  if (d.getHours() >= 5) d.setDate(d.getDate() + 1)
-  d.setHours(9, 0, 0, 0)
+  const d = new Date(Date.now() + 12 * 3600_000)
+  d.setSeconds(0, 0)
+  d.setMinutes(Math.ceil(d.getMinutes() / 15) * 15)
   return d
 }
 

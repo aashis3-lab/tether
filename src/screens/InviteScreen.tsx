@@ -18,14 +18,14 @@ export function InviteScreen() {
       <Title className="mb-5 mt-1">{session.name || 'Invite your friends'}</Title>
       <InviteCard code={session.join_code} />
       {members.length > 1 && (
-        <p className="mt-3 text-center text-xs text-ink-dim">
+        <p className="mt-3 text-center text-ink-dim">
           {members.length - 1} {members.length === 2 ? 'friend has' : 'friends have'} joined
         </p>
       )}
       <div className="mt-auto pt-8">
         <button
           onClick={() => navigate(`/session/${session.id}`, { replace: true })}
-          className={buttonClass('secondary')}
+          className={buttonClass('primary')}
         >
           Done
         </button>

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { parsePhone } from '@/lib/phone'
 import type { Contact } from '@/lib/types'
 import { GuardianPicker } from './GuardianPicker'
 import { Button, Sheet } from './ui'
@@ -31,13 +30,12 @@ export function GuardianSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
-  const phone = parsePhone(value.phone)
-  const ok = value.name.trim() && phone
+  const ok = value.name.trim() && value.phone.trim()
 
   return (
     <Sheet open={open} onClose={onClose} title="Who's your at-home guardian tonight?">
       <GuardianPicker contacts={contacts} value={value} onChange={setValue} heading={false} />
-      <Button className="mt-5" disabled={!ok} onClick={() => phone && onConfirm({ name: value.name.trim(), phone })}>
+      <Button className="mt-5" disabled={!ok} onClick={() => onConfirm({ name: value.name.trim(), phone: value.phone.trim() })}>
         {confirmLabel}
       </Button>
     </Sheet>

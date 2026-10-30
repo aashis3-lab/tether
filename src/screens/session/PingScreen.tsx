@@ -1,42 +1,52 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { SendIcon, ShieldAlertIcon, UsersIcon } from '@/components/icons'
+import { useEffect, useState, type ReactNode } from 'react'
+import { CheckIcon, SendIcon, ShieldAlertIcon } from '@/components/icons'
 import { Header, ErrorText, Screen, Title } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
 import { claimerName, guardianToken, raiseAlert, resolveAlert } from '@/lib/alerts'
 import { firstName } from '@/lib/format'
-import { LOCATION_OFF } from '@/lib/status'
 import { tryOrToast } from '@/lib/toast'
+import { distanceM, hasLocation } from '@/lib/geo'
+import type { AlertLevel } from '@/lib/types'
 import { useSessionCtx } from './context'
 
+const RANK: Record<AlertLevel, number> = { ping: 1, alert: 2, emergency: 3 }
+
 /**
- * Find me status. The Find me button on the map sends the request directly;
- * this page shows who's on it, the location truth, "I'm OK now", and the
- * secondary "Alert my guardian". Emergency calling lives on HELP.
+ * PING, "What do you need?": Find me (friends) / Alert guardian, plus the
+ * live status of the request and "I'm OK now". Emergency calling lives on HELP.
  */
 export function PingScreen() {
   const { session, members, alerts, me, myPos } = useSessionCtx()
-  const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [token, setToken] = useState<string | null>(null)
 
   const myAlert = alerts.find((a) => a.member_id === me?.id && a.type === 'manual')
+  const level = myAlert ? RANK[myAlert.level] : 0
   const claimer = myAlert ? claimerName(myAlert, members) : null
   const guardian = firstName(me?.guardian_name) || 'your guardian'
-  const alone = members.length <= 1
-  const base = `/session/${session.id}`
+  const guardianFull = me?.guardian_name?.trim() || 'Your guardian'
+
+  const nearest = members
+    .filter((m) => m.id !== me?.id && m.user_id && m.status !== 'home')
+    .filter(hasLocation)
+    .sort((a, b) => (myPos ? distanceM(myPos, a) - distanceM(myPos, b) : 0))[0]
+  const findMeSub = nearest
+    ? members.length > 5
+      ? `${firstName(nearest.name)} first, then group.`
+      : `${firstName(nearest.name)} and the rest of your group.`
+    : 'Your whole group.'
 
   useEffect(() => {
     if (myAlert && myAlert.level !== 'ping' && !token) void guardianToken(myAlert.id).then(setToken).catch(() => undefined)
   }, [myAlert, token])
 
-  async function raise(level: 'ping' | 'alert') {
+  async function raise(l: AlertLevel) {
     if (!me) return
     setBusy(true)
     setError('')
     try {
-      const r = await raiseAlert(me.id, level)
+      const r = await raiseAlert(me.id, l)
       if (r.guardian_token) setToken(r.guardian_token)
     } catch (e) {
       setError((e as Error).message)
@@ -47,76 +57,100 @@ export function PingScreen() {
 
   return (
     <Screen>
-      <Header title="Find me" back={base} />
+      <Header title="Get help from friends" back={`/session/${session.id}`} />
+      <Title>What do you need?</Title>
+      <p className="mt-1 text-lg text-ink-dim">Tap one option.</p>
 
-      {myAlert ? (
-        <>
-          <Title>{claimer ? `${firstName(claimer)} is on it` : 'Request sent'}</Title>
-          <p className="mt-1 text-base text-ink-dim">
-            {claimer
-              ? 'Stay where you are if you can.'
-              : myAlert.level === 'ping'
-                ? 'Waiting for a friend to answer.'
-                : `${guardian} has been texted.`}
+      {myAlert && (
+        <div className="mt-4 rounded-xl2 border border-status-alert/50 bg-status-alert/10 p-4">
+          <p className="text-lg font-bold">
+            {claimer ? `${firstName(claimer)} is on it` : 'Request sent, waiting for a friend to answer'}
           </p>
-          <p
-            className={`mt-4 rounded-xl px-4 py-3 text-base font-medium ${
-              myPos ? 'bg-status-calm/10 text-status-calm' : 'bg-status-checkin/10 text-status-checkin'
-            }`}
-          >
-            {myPos ? 'Your group can see your location.' : LOCATION_OFF}
+          <p className="mt-1 text-ink-dim">
+            {myAlert.level === 'ping' ? 'Your group has your location.' : `${guardian} has been texted.`}
           </p>
           {token && (
-            <a href={`/guardian/${token}`} target="_blank" rel="noreferrer" className="mt-2 inline-block min-h-[44px] leading-[44px] text-sm font-medium text-primary-ink">
-              Open guardian view ↗
+            <a href={`/guardian/${token}`} target="_blank" rel="noreferrer" className="mt-1 inline-block min-h-[44px] leading-[44px] text-accent-pink underline">
+              Open guardian view (demo) ↗
             </a>
           )}
           <button
             disabled={busy}
             onClick={async () => {
               setBusy(true)
-              await tryOrToast("Couldn't cancel the request", () => resolveAlert(myAlert.id))
+              await tryOrToast("Couldn't cancel the alert", () => resolveAlert(myAlert.id))
               setBusy(false)
             }}
-            className={`mt-4 ${buttonClass('safe')}`}
+            className={`mt-3 ${buttonClass('safe')}`}
           >
-            {busy ? 'Saving…' : "I'm OK now"}
+            {busy ? 'Saving...' : "I'm OK now"}
           </button>
-        </>
-      ) : alone ? (
-        <>
-          <Title>No one else is in your party yet</Title>
-          <p className="mt-1 text-base text-ink-dim">A Find me request needs friends to send it to.</p>
-          <button onClick={() => navigate(`${base}/invite`)} className={`mt-5 ${buttonClass('primary')}`}>
-            <UsersIcon width={18} height={18} /> Invite friends
-          </button>
-        </>
-      ) : (
-        <>
-          <Title>Ask your group to find you</Title>
-          <p className="mt-1 text-base text-ink-dim">Everyone in the party gets your request{myPos ? ' and location' : ''}.</p>
-          {!myPos && <p className="mt-4 rounded-xl bg-status-checkin/10 px-4 py-3 text-base font-medium text-status-checkin">{LOCATION_OFF}</p>}
-          <button disabled={busy} onClick={() => void raise('ping')} className={`mt-5 ${buttonClass('findMe')}`}>
-            <SendIcon width={18} height={18} /> {busy ? 'Sending…' : 'Find me'}
-          </button>
-        </>
+        </div>
       )}
 
-      {/* Secondary: bring in the guardian. */}
-      {(!myAlert || myAlert.level === 'ping') && (
-        <button
-          disabled={busy || !me}
-          onClick={() => void raise('alert')}
-          className={`mt-3 ${buttonClass('secondary')}`}
-        >
-          <ShieldAlertIcon width={18} height={18} /> {alone ? 'Alert my guardian instead' : `Alert ${guardian}`}
-        </button>
-      )}
+      <div className="mt-5 flex flex-col gap-3">
+        <Choice
+          tone="yellow"
+          icon={<SendIcon width={26} height={26} />}
+          title="Find me"
+          sub={findMeSub}
+          done={level >= 1}
+          disabled={busy || level >= 1}
+          onClick={() => raise('ping')}
+        />
+        <Choice
+          tone="red"
+          icon={<ShieldAlertIcon width={30} height={30} strokeWidth={2} />}
+          title="Alert Guardian"
+          sub={`${guardianFull} gets your location and status.`}
+          done={level >= 2}
+          disabled={busy || level >= 2}
+          onClick={() => raise('alert')}
+        />
+      </div>
 
       <div className="mt-3">
         <ErrorText>{error}</ErrorText>
       </div>
-      <p className="mt-auto pt-6 text-center text-xs text-ink-dim">In danger? Press HELP.</p>
+      <p className="mt-auto pt-6 text-center text-base text-ink-dim">In danger? Use the red HELP button to call.</p>
     </Screen>
+  )
+}
+
+const TONE = {
+  yellow: 'bg-findme text-black',
+  red: 'border-[3px] border-danger bg-danger/15 text-ink [&_svg]:text-status-alert',
+}
+
+function Choice({
+  tone,
+  icon,
+  title,
+  sub,
+  done,
+  disabled,
+  onClick,
+}: {
+  tone: keyof typeof TONE
+  icon: ReactNode
+  title: string
+  sub: string
+  done?: boolean
+  disabled?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      disabled={disabled}
+      onClick={onClick}
+      className={`flex min-h-[96px] w-full items-center gap-4 rounded-2xl px-5 text-left active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100 ${TONE[tone]}`}
+    >
+      <span className="shrink-0">{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-2xl font-bold">{title}</span>
+        <span className="mt-0.5 block text-base opacity-90">{sub}</span>
+      </span>
+      {done && <CheckIcon width={24} height={24} className="shrink-0" />}
+    </button>
   )
 }

@@ -5,8 +5,7 @@ import { Avatar } from '@/components/Avatar'
 import { GuardianSheet } from '@/components/GuardianSheet'
 import { ChevronRightIcon, QrIcon } from '@/components/icons'
 import { QrScanner } from '@/components/QrScanner'
-import { TabScreen } from '@/components/BottomNav'
-import { Header, ErrorText, Title, inputClass } from '@/components/ui'
+import { Header, ErrorText, Screen, Title, inputClass } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
 import { firstName, formatCode } from '@/lib/format'
 import { profileContacts } from '@/lib/profile'
@@ -31,7 +30,7 @@ const normalize = (raw: string) => raw.toUpperCase().replace(/[^A-Z0-9]/g, '').s
 /** "Join a party": code or QR, then "Is this your group?" preview, guardian, join. */
 export function JoinSession() {
   const { code: codeParam } = useParams()
-  const { profile, userId } = useAuth()
+  const { profile } = useAuth()
   const navigate = useNavigate()
 
   const contacts = profileContacts(profile)
@@ -42,8 +41,6 @@ export function JoinSession() {
   const [scanning, setScanning] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  // Already a member of the previewed party -> offer to open it instead.
-  const [alreadyIn, setAlreadyIn] = useState(false)
 
   const lookup = useCallback(async (c: string) => {
     setError('')
@@ -54,24 +51,6 @@ export function JoinSession() {
     else if (!row) setError('No active party with that code.')
     else setPreview(row)
   }, [])
-
-  useEffect(() => {
-    setAlreadyIn(false)
-    if (!preview || !userId) return
-    let live = true
-    void supabase
-      .from('session_members')
-      .select('id')
-      .eq('session_id', preview.session_id)
-      .eq('user_id', userId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (live) setAlreadyIn(Boolean(data))
-      })
-    return () => {
-      live = false
-    }
-  }, [preview, userId])
 
   // Look it up as soon as the code is complete.
   useEffect(() => {
@@ -101,35 +80,35 @@ export function JoinSession() {
   const host = preview ? firstName(preview.creator_name) : ''
 
   return (
-    <TabScreen>
-      <Header title="Join" />
+    <Screen>
+      <Header title="Join" back="/" />
       <Title>Join a party</Title>
 
       <label className="mt-5 block">
-        <span className="mb-1.5 block text-xs font-medium text-ink-dim">Invite code</span>
+        <span className="mb-2 block text-sm font-semibold">Invite code</span>
         <input
           value={formatCode(code)}
           onChange={(e) => setCode(normalize(e.target.value))}
           autoCapitalize="characters"
           autoComplete="off"
           placeholder="K7M 4QX"
-          className={`${inputClass} text-xl font-medium tracking-wide`}
+          className={`${inputClass} text-xl font-semibold tracking-wide`}
           autoFocus={!codeParam}
         />
       </label>
 
       <button
         onClick={() => setScanning(true)}
-        className="mt-3 flex min-h-tap w-full items-center justify-center gap-2 rounded-full border border-outline px-4 text-base font-medium text-primary-ink active:scale-[0.98]"
+        className="mt-3 flex min-h-tap w-full items-center gap-3 rounded-xl2 border border-white/10 bg-bg-card px-4 text-lg font-semibold active:scale-[0.98]"
       >
-        <QrIcon width={22} height={22} className="text-secondary-ink" />
+        <QrIcon width={22} height={22} className="text-accent-orange" />
         Scan QR
       </button>
 
-      {preview && <h2 className="section-title mt-4 px-0">Is this your group?</h2>}
+      {preview && <h2 className="mt-6 text-2xl font-bold">Is this your group?</h2>}
       {preview && (
-        <div className="rounded-[20px] bg-brand-tonal p-5 shadow-e1">
-          <p className="text-2xl font-medium text-primary-on-container">{preview.party_name || `${host}'s party`}</p>
+        <div className="mt-3 rounded-xl2 bg-bg-card p-5">
+          <p className="text-2xl font-bold">{preview.party_name || `${host}'s party`}</p>
           {preview.party_name && <p className="text-base text-ink-dim">Started by {host}</p>}
           {preview.member_names && preview.member_names.length > 0 && (
             <>
@@ -142,28 +121,20 @@ export function JoinSession() {
             </>
           )}
           <p className="mt-2 text-ink">
-            {preview.venue_name ? `${preview.venue_name} · ` : ''}Ends {formatClock(preview.end_time)}
+            {preview.venue_name ? `${preview.venue_name} • ` : 'Until '}
+            {formatClock(preview.end_time)}
           </p>
+          <p className="mt-2 text-base text-ink-dim">Stays open until everyone gets home.</p>
         </div>
       )}
 
-      {preview && alreadyIn && (
-        <div className="mt-3 rounded-2xl bg-status-calm/10 p-4">
-          <p className="text-lg font-medium">You're already in this party</p>
-          <p className="text-xs text-ink-dim">No need to join again.</p>
-          <button onClick={() => navigate(`/session/${preview.session_id}`)} className={`mt-3 ${buttonClass('primary')}`}>
-            Open party
-          </button>
-        </div>
-      )}
-
-      {preview && !alreadyIn && (
+      {preview && (
         <button
           onClick={() => setSheet('guardian')}
-          className="mt-3 flex min-h-[64px] w-full items-center gap-3 rounded-2xl bg-surface-lowest px-4 py-3 text-left dark:bg-surface-mid"
+          className="mt-3 flex min-h-tap w-full items-center gap-3 rounded-xl2 bg-bg-card px-4 py-3 text-left"
         >
           <span className="min-w-0 flex-1">
-            <span className="block text-lg">{guardian ? `${guardian.name} • Guardian` : 'Choose a guardian'}</span>
+            <span className="block font-semibold">{guardian ? `${guardian.name} • Guardian` : 'Choose a guardian'}</span>
             <span className="block text-base text-ink-dim">Your at-home contact</span>
           </span>
           <ChevronRightIcon width={20} height={20} className="text-ink-dim" />
@@ -174,7 +145,7 @@ export function JoinSession() {
         <ErrorText>{error}</ErrorText>
       </div>
 
-      <div className={`mt-auto pt-8 ${alreadyIn ? 'hidden' : ''}`}>
+      <div className="mt-auto pt-8">
         <button
           disabled={!preview || busy}
           onClick={() => setSheet('join')}
@@ -182,7 +153,7 @@ export function JoinSession() {
         >
           {preview ? `Join ${host}'s party` : 'Join party'}
         </button>
-        <p className="mt-3 text-center text-xs text-ink-dim">Location shares after you join.</p>
+        <p className="mt-3 text-center text-base text-ink-dim">Location shares after you join.</p>
       </div>
 
       <GuardianSheet
@@ -209,6 +180,6 @@ export function JoinSession() {
           onClose={() => setScanning(false)}
         />
       )}
-    </TabScreen>
+    </Screen>
   )
 }

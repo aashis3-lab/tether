@@ -24,8 +24,8 @@ export function MorningSummary({
     <div className="fixed inset-0 z-[1500] flex animate-enter justify-center bg-[#cdeedd] text-[#103a26]">
       <div className="flex w-full max-w-app flex-col px-7 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(4rem,env(safe-area-inset-top))]">
         <div className="flex flex-1 flex-col justify-center">
-          {partyName && <p className="mb-2 text-xs font-medium uppercase tracking-wider opacity-60">{partyName}</p>}
-          <p className="text-3xl font-normal leading-tight tracking-tight">
+          {partyName && <p className="mb-2 text-sm font-bold uppercase tracking-wide opacity-60">{partyName}</p>}
+          <p className="text-[2.25rem] font-bold leading-tight tracking-tight">
             {everyone ? 'Everyone made it home.' : 'The party’s over.'}
           </p>
           <p className="mt-2 text-xl opacity-80">Hope tonight was a good one.</p>
@@ -45,7 +45,7 @@ export function MorningSummary({
 
         <button
           onClick={() => navigate('/', { replace: true })}
-          className="min-h-[52px] w-full rounded-full bg-[#103a26] text-lg font-medium text-[#cdeedd] transition active:scale-[0.98]"
+          className="min-h-tap w-full rounded-2xl bg-[#103a26] text-lg font-bold text-[#cdeedd] transition active:scale-[0.98]"
         >
           Close
         </button>

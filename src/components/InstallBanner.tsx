@@ -59,10 +59,10 @@ export function InstallBanner() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[3000] flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-      <div className="flex w-full max-w-app animate-enter items-start gap-3 rounded-2xl bg-surface-low p-3 pl-4 shadow-e3">
+      <div className="flex w-full max-w-app animate-enter items-start gap-3 rounded-2xl border border-white/10 bg-bg-raised/95 p-3 pl-4 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] backdrop-blur">
         <img src="/icons/icon-96.png" alt="" className="mt-0.5 h-10 w-10 rounded-xl" />
         <div className="min-w-0 flex-1">
-          <p className="font-semibold">Add Tether to your Home Screen</p>
+          <p className="font-bold">Add Tether to your Home Screen</p>
           {promptEvent ? (
             <button
               onClick={async () => {
@@ -71,7 +71,7 @@ export function InstallBanner() {
                 if (r.outcome === 'accepted') dismiss()
                 setPromptEvent(null)
               }}
-              className="mt-2 min-h-10 rounded-full bg-primary px-5 font-medium text-primary-on"
+              className="mt-2 min-h-[44px] rounded-xl bg-white px-5 font-bold text-black"
             >
               Install
             </button>
