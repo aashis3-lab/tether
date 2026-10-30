@@ -1,9 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
+import { TabScreen } from '@/components/BottomNav'
 import { Avatar } from '@/components/Avatar'
 import { ChevronRightIcon, GearIcon, HomeIcon, PhoneIcon, ScanIcon, ShieldIcon, UsersIcon } from '@/components/icons'
-import { Header, Screen, Spinner } from '@/components/ui'
+import { Header, Spinner } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
 import { WalletSheet } from '@/components/WalletSheet'
 import { useActiveSessionId } from '@/hooks/useSession'
@@ -42,7 +43,7 @@ export function Home() {
   if (sessionId) return <Navigate to={`/session/${sessionId}`} replace />
 
   return (
-    <Screen>
+    <TabScreen>
       <Header title="Tether" />
 
       {/* You */}
@@ -116,7 +117,7 @@ export function Home() {
       </div>
 
       <WalletSheet open={wallet} onClose={() => setWallet(false)} profile={profile} me={undefined} />
-    </Screen>
+    </TabScreen>
   )
 }
 

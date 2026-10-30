@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
+import { TabScreen } from '@/components/BottomNav'
 import { AUTH_MODE, formatPhone } from '@/auth/phoneAuth'
 import { AvatarPicker } from '@/components/AvatarPicker'
 import { BackTapSteps } from '@/components/BackTapSteps'
@@ -9,7 +10,7 @@ import { ChevronRightIcon, PlusIcon, XIcon } from '@/components/icons'
 import { KeychainCard } from '@/components/KeychainCard'
 import { PermissionsCard } from '@/components/PermissionsCard'
 import { SmsCard } from '@/components/SmsCard'
-import { Header, Button, ErrorText, Field, Screen, Sheet, Title } from '@/components/ui'
+import { Header, Button, ErrorText, Field, Sheet, Title } from '@/components/ui'
 import { useActiveSessionId } from '@/hooks/useSession'
 import { geocode, getCurrentPosition } from '@/lib/geo'
 import { profileContacts } from '@/lib/profile'
@@ -60,8 +61,8 @@ export function Settings() {
   }
 
   return (
-    <Screen>
-      <Header title="Settings" back={true} />
+    <TabScreen>
+      <Header title="Settings" back={sessionId ? true : undefined} />
       <Title>Safety settings</Title>
 
       <div className="mt-5 rounded-xl2 bg-bg-card p-4">
@@ -175,7 +176,7 @@ export function Settings() {
       <Sheet open={edit === 'backtap'} onClose={() => setEdit(null)} title="iPhone Back Tap">
         <BackTapSteps />
       </Sheet>
-    </Screen>
+    </TabScreen>
   )
 }
 
