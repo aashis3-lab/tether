@@ -4,8 +4,8 @@ Location sharing that lasts one night and watches for your group, so no one has 
 Hackathon prototype, full product spec lives in [CLAUDE.md](./CLAUDE.md).
 
 **Status:** Phase 4, automatic rules A–D in the `evaluate-session` Edge Function (separation,
-left alone, low battery, arrival chain), run every 10 s by pg_cron and after location updates,
-with DEMO_SPEED. Phase 3, manual escalation ladder (ping → guardian alert → mock emergency), "I'm on
+left alone, low battery, arrival chain), run every 10 s by pg_cron and after location updates.
+Phase 3, manual escalation ladder (ping → guardian alert → call 911), "I'm on
 it" claiming, and the no-login guardian view. (Phase 2: sign-up, profiles, start/join, live
 active-session screen.)
 
@@ -61,26 +61,23 @@ order**:
 10. `20260110000000_security_hardening.sql`: unguessable join codes (6 random characters),
     peers see only name, avatar and (during a party) phone via `peer_profiles`, members write
     only their own row, alerts and check-ins change only through RPCs, raise/answer only for
-    yourself, server-side guardian link base URL and demo speed, test-text rate limit
+    yourself, server-side guardian link base URL, test-text rate limit
     (then follow **Security settings** below)
+11. `20260112000000_real_timers.sql`: escalation timers always run at real-world speed (removes
+    the old `tether_demo_speed` Vault secret)
 
 ### Security settings
 
-Add these in **SQL editor** after migration 10 (both are optional but recommended):
+Add this in **SQL editor** after migration 10 (optional but recommended):
 
 ```sql
 -- The only address used in guardian text links. Without it the app's own address is
 -- trusted, which lets a modified client put any link in a text to a guardian.
 select vault.create_secret('https://<your-app>.vercel.app', 'tether_app_url');
-
--- Demo speed for escalation run from the app (when evaluate-session isn't deployed).
--- The Edge Function keeps using its own DEMO_SPEED secret. Default 1.
-select vault.create_secret('60', 'tether_demo_speed');
 ```
 
 Also check **Authentication → Providers → Anonymous sign-ins** is **off** in any project real
-people use: when it is on, anyone can skip SMS verification by calling the API directly,
-whatever `VITE_AUTH_MODE` says.
+people use: when it is on, anyone can skip SMS verification by calling the API directly.
 
 The app checks this on startup: if a migration is missing it shows exactly which file to run.
 
@@ -101,19 +98,14 @@ supabase db push
 
 ## 4. Enable sign-in
 
-Sign-up is phone + code (CLAUDE.md screen 1). There are two modes, set by `VITE_AUTH_MODE`:
-
-- **`mock` (default)**, no SMS is sent; the code appears in an on-screen "incoming text" banner.
-  Under the hood this uses a Supabase anonymous session. **Required:** dashboard →
-  **Authentication → Sign In / Providers → "Allow anonymous sign-ins"** → on.
-  (Signing out of a mock account loses it, fine for a demo.)
-- **`sms`**, real text messages via Supabase phone auth. See **Real SMS codes** below.
+Sign-up is phone + a real SMS code via Supabase phone auth (CLAUDE.md screen 1). Set it up
+as below.
 
 ### Real SMS codes
 
 1. Create a [Twilio](https://www.twilio.com) account and get a phone number that can send SMS.
    (Trial accounts only text numbers you've verified in the Twilio console. That's fine for
-   testing; upgrade before demoing to strangers.)
+   testing; upgrade before real users sign up.)
 2. Supabase dashboard → **Authentication → Sign In / Providers → Phone** → enable, choose
    **Twilio**, and paste the Account SID, Auth Token, and Message Service SID (or sender number).
 3. Same page → **SMS message** template. To let Android Chrome fill the code in automatically
@@ -127,7 +119,6 @@ Sign-up is phone + code (CLAUDE.md screen 1). There are two modes, set by `VITE_
 
    The domain must match the address the app is opened from. iPhones fill the code in from the
    keyboard suggestion either way.
-4. In `.env` set `VITE_AUTH_MODE=sms` and restart the dev server.
 
 The app sends the code, enforces a 60s resend cooldown (Supabase's default per-number limit),
 verifies automatically when the 6th digit is entered, and shows readable errors (wrong/expired
@@ -143,8 +134,7 @@ cp .env.example .env
 Fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from **Project Settings → API** in the
 Supabase dashboard.
 
-Leave `VITE_DEMO_SPEED=1` and `VITE_TWILIO_ENABLED=false` for now, those matter starting Phase 4
-and Phase 7 respectively.
+Leave `VITE_TWILIO_ENABLED=false` until Twilio is set up (Phase 7).
 
 ## 6. Run the dev server
 
@@ -203,7 +193,7 @@ Proceed" on Android).
 ```
 src/
   lib/                  Supabase client, row types, geo math, status summary, alert sound
-  auth/                 Auth context + phone sign-in (mock / real SMS)
+  auth/                 Auth context + phone sign-in (real SMS)
   hooks/                Live session (Realtime) + location/battery reporter
   components/           UI primitives, Leaflet map, alert overlay, invite card, profile form
   screens/              SignUp, Home, StartSession, JoinSession, ActiveSession, GetMeHome, Settings
@@ -234,8 +224,7 @@ duplicate it).
    emergency contact) and shows "Sent" or the exact Twilio error.
 
 Sign-in codes are separate: Supabase sends them itself. For real codes, also set
-**Authentication, Sign In / Providers, Phone** to Twilio with the same credentials, and set
-`VITE_AUTH_MODE=sms` (now the default) in `.env`.
+**Authentication, Sign In / Providers, Phone** to Twilio with the same credentials.
 
 ## Testing with 3 people
 
@@ -284,7 +273,7 @@ Steps:
    - CLI: `npx supabase login`, `npx supabase link --project-ref <ref>`, then
      `npx supabase functions deploy evaluate-session --no-verify-jwt`.
 5. **Set function secrets** (Dashboard → Edge Functions → Secrets):
-   `CRON_SECRET` = the value from step 3, `DEMO_SPEED` = same as `VITE_DEMO_SPEED`,
+   `CRON_SECRET` = the value from step 3,
    `APP_BASE_URL` = where the app runs (e.g. `http://localhost:5173`).
 6. **Check it's running:** Edge Functions → evaluate-session → **Logs** should show a call every
    10 s while a night out is active (the cron tick is a no-op when none is). In SQL:
@@ -294,7 +283,7 @@ Open apps also call the function after each location update (and every 5–15 s 
 so rules still run during development even before cron is wired up. If the function isn't
 deployed at all, apps fall back to the Phase 3 manual-ladder timers.
 
-### What the rules do (timers × DEMO_SPEED)
+### What the rules do
 
 | Rule | Trigger | Then |
 | --- | --- | --- |
@@ -308,16 +297,15 @@ time. `rule_state` (the timers) is wiped with location data when the night ends.
 
 ## Phase 4 test checklist
 
-Set `VITE_DEMO_SPEED=60` **and** the function's `DEMO_SPEED=60` (1 min → 1 s). Simulated friends
-arrive in Phase 5; until then, move people by editing `lat`/`lng` on `session_members` in the
+Timers run at real-world speed. Move people by editing `lat`/`lng` on `session_members` in the
 Table Editor (or a second phone).
 
 1. **A:** with a pinned venue and two members inside it, move one ~200 m away (still inside a
-   large pin, or with no pins). ~10 s later they get an amber "Are you okay?". Ignore it 3 s →
+   large pin, or with no pins). ~10 min later they get an amber "Are you okay?". Ignore it 3 min →
    the other member gets "Jake isn't answering". "I'm okay" turns them calm again.
-2. **B:** move a member outside every pin and > 50 m from everyone. ~2 s → "You left on your
-   own" check-in. Ignore: 3 s louder + nearest friend pinged with distance/direction, 5 s whole
-   group, 10 s guardian alert (guardian link appears in the alert's message).
+2. **B:** move a member outside every pin and > 50 m from everyone. ~2 min → "You left on your
+   own" check-in. Ignore: 3 min louder + nearest friend pinged with distance/direction, 5 min whole
+   group, 10 min guardian alert (guardian link appears in the alert's message).
    "Heading home" instead → status card shows "heading home, ETA …".
 3. **C:** set `battery_level` to 8 → nearest friend gets "…phone is dying"; set it back above 20
    to reset.
@@ -326,40 +314,38 @@ Table Editor (or a second phone).
 
 ## Phase 3 test checklist
 
-Use two windows (A = Maya, B = Jake) in the same night out. Set `VITE_DEMO_SPEED=60` to make
-"10 min" = 10 s while testing.
+Use two windows (A = Maya, B = Jake) in the same night out.
 
 1. A taps **I need help** once → A sees "Help request sent"; B gets a full-screen red alert with
    sound, distance + direction, and **I'm on it**.
-2. B taps **Not right now** → the overlay comes back after 2 min (×DEMO_SPEED) until someone claims.
+2. B taps **Not right now** → the overlay comes back after 2 min until someone claims.
 3. B taps **I'm on it** → A sees "Jake is on it"; B gets a card with Directions + **Found them ✓**.
-4. A taps **Alert Mom** → "Mom has been texted" + **Open guardian view (demo)**. The guardian page
+4. A taps **Alert Mom** → "Mom has been texted". The guardian page (link in Mom's text)
    shows the SMS text, then one instruction ("Call Jake, they're 200 ft from Maya.") and one call
    button. It updates every 5 s (claims, resolution).
-5. A holds **Hold 2s for emergency** → mock EMS screen ("DEMO: would call 911") with address,
-   coordinates, medical info. B sees an EMERGENCY overlay.
+5. A holds **Call 911** for 2 s and confirms → the phone dials real 911 (don't complete the call
+   when testing). B sees an EMERGENCY overlay.
 6. **I'm OK now** (A) or **Found them** (B) resolves it; A's status returns to "With the group" and
    the guardian page says "Maya is OK now."
-7. Leave a ping unresolved for 10 min (×DEMO_SPEED) → it auto-escalates to a guardian alert.
+7. Leave a ping unresolved for 10 min → it auto-escalates to a guardian alert.
 
 ## Data model notes
 
-- `session_members.name` is filled in at insert time for every member (real or simulated):
+- `session_members.name` is filled in at insert time for every member:
   there's no join to `profiles` needed just to render a name on the active-session screen.
 - Guardian view (`/guardian/:token`) is unauthenticated by design. The token is
   `<alert_id>.<HMAC>` signed with a secret stored in Supabase Vault
   (`tether_guardian_token_secret`, created by the Phase 3 migration). The page calls the
   `guardian_view(token)` SECURITY DEFINER function, which verifies the signature and returns only
   what the guardian needs, no RLS policy opens alerts to anonymous users.
-- Escalation timing lives in `escalate_alerts(session_id, demo_speed, base_url)`: narrow pings
+- Escalation timing lives in `escalate_alerts(session_id, base_url)`: narrow pings
   widen to the whole group after 2 min unclaimed; anything unresolved for 10 min re-escalates
   (ping → guardian alert; guardian alert → re-notify, never auto-EMS). Open clients call it as a
   heartbeat in Phase 3; pg_cron calls it from Phase 4.
-- `end_session(session_id)` (a Postgres function) wipes live location fields and deletes simulated
-  members, per spec. The frontend should call this via `supabase.rpc('end_session', { p_session_id
+- `end_session(session_id)` (a Postgres function) wipes live location fields, per spec. The frontend should call this via `supabase.rpc('end_session', { p_session_id
   })` instead of hand-rolling the update/delete.
 
 ## Roadmap
 
 See [CLAUDE.md](./CLAUDE.md) for the full phase breakdown (auth, sessions, escalation ladder,
-automatic rules, demo control panel, lock screen/wallet/fake call, SMS/push, Vercel deploy).
+automatic rules, wallet card, SMS/push, Vercel deploy).

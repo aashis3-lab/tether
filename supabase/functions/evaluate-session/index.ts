@@ -10,7 +10,7 @@
 // or paste this file into Dashboard -> Edge Functions -> new function, and
 // untick "Enforce JWT verification".
 //
-// Secrets: DEMO_SPEED, APP_BASE_URL, CRON_SECRET (SUPABASE_URL and
+// Secrets: APP_BASE_URL, CRON_SECRET (SUPABASE_URL and
 // SUPABASE_SERVICE_ROLE_KEY are provided automatically).
 //
 // Single file on purpose so it can be pasted into the dashboard editor.
@@ -21,12 +21,11 @@ import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 // Config
 // ---------------------------------------------------------------------------
 
-const SPEED = Math.max(Number(Deno.env.get('DEMO_SPEED') ?? '1') || 1, 0.01)
 const BASE_URL = (Deno.env.get('APP_BASE_URL') ?? '').replace(/\/$/, '')
 const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? ''
 
-/** Rule timer in ms after DEMO_SPEED. T(10) = "10 minutes". */
-const T = (minutes: number) => (minutes * 60_000) / SPEED
+/** Rule timer in ms. T(10) = "10 minutes". */
+const T = (minutes: number) => minutes * 60_000
 
 const SEPARATION_M = 150 // A: distance from group centroid
 const ALONE_RADIUS_M = 50 // B: no friend within this
@@ -218,7 +217,7 @@ Deno.serve(async (req) => {
   // Texts queued by the database (HELP, guardian alerts, everyone home, test).
   // Cron sends everything; an app sends its party's texts and its own.
   const sms = await processOutbox(db, isCron ? {} : { sessionId: body.session_id, userId: uid! })
-  return json({ speed: SPEED, results, sms })
+  return json({ results, sms })
 })
 
 // ---------------------------------------------------------------------------
@@ -662,9 +661,9 @@ async function evaluateSession(db: SupabaseClient, session: Session): Promise<st
     // D (part 2): arrival chain
     // -------------------------------------------------------------------
     if (home) {
-      // Heading home with no ETA yet -> estimate one (scaled by DEMO_SPEED).
+      // Heading home with no ETA yet -> estimate one.
       if (m.status === 'heading_home' && !m.eta && located(m)) {
-        patch.eta = new Date(now + travelMs(dist(m, home)) / SPEED).toISOString()
+        patch.eta = new Date(now + travelMs(dist(m, home))).toISOString()
       }
       const eta = patch.eta ?? m.eta
 
@@ -702,7 +701,7 @@ async function evaluateSession(db: SupabaseClient, session: Session): Promise<st
   }
 
   // Time-based steps of the manual ladder (widen pings, 10-min re-escalation).
-  await db.rpc('escalate_alerts', { p_session_id: session.id, p_demo_speed: SPEED, p_base_url: BASE_URL })
+  await db.rpc('escalate_alerts', { p_session_id: session.id, p_base_url: BASE_URL })
 
   return actions
 }

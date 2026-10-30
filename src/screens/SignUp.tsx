@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import {
-  AUTH_MODE,
   RESEND_COOLDOWN_S,
   formatPhone,
   listenForSmsCode,
@@ -35,7 +34,6 @@ export function SignUp() {
   const [phone, setPhone] = useState('')
   const [codeSent, setCodeSent] = useState(false)
   const [code, setCode] = useState('')
-  const [mockCode, setMockCode] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [resendIn, setResendIn] = useState(0)
@@ -51,7 +49,7 @@ export function SignUp() {
   // Android Chrome: fill the code in straight from the incoming SMS. It is
   // only filled in, the person still taps Verify.
   useEffect(() => {
-    if (!codeSent || AUTH_MODE !== 'sms') return
+    if (!codeSent) return
     const ac = new AbortController()
     void listenForSmsCode(ac.signal).then((c) => {
       if (c && !ac.signal.aborted) setCode(c)
@@ -81,7 +79,7 @@ export function SignUp() {
     try {
       const normalized = normalizePhone(phone)
       setPhone(formatPhone(normalized))
-      setMockCode(await sendCode(normalized))
+      await sendCode(normalized)
       setCodeSent(true)
       setResendIn(RESEND_COOLDOWN_S)
       setSendCount((n) => n + 1)
@@ -103,7 +101,7 @@ export function SignUp() {
     setBusy(true)
     setError('')
     try {
-      await verifyCode(normalizePhone(phone), value, mockCode)
+      await verifyCode(normalizePhone(phone), value)
       const existing = await refreshProfile()
       setStep(existing ? 'done' : 'profile')
       if (existing) navigate(next, { replace: true })
@@ -124,7 +122,6 @@ export function SignUp() {
     <Screen className="pt-[max(3rem,env(safe-area-inset-top))]">
       {step === 'verify' && (
         <form onSubmit={submit} className="flex flex-1 flex-col">
-          {mockCode && <MockSmsBanner code={mockCode} />}
           <Title className="mb-6">Verify your phone</Title>
 
           <Field
@@ -135,10 +132,7 @@ export function SignUp() {
             value={phone}
             onChange={(e) => {
               setPhone(e.target.value)
-              if (codeSent) {
-                setCodeSent(false)
-                setMockCode(null)
-              }
+              if (codeSent) setCodeSent(false)
             }}
             placeholder="+1 (555) 123-4567"
             required
@@ -151,7 +145,7 @@ export function SignUp() {
               <CodeBoxes value={code} onChange={setCode} autoFocus />
               <p className="mt-4 flex items-center gap-2 text-sm font-semibold text-accent-pink">
                 <CheckIcon width={18} height={18} />
-                {mockCode ? 'Code received' : `Code sent to ${phone}`}
+                Code sent to {phone}
               </p>
               <Button type="button" variant="secondary" className="mt-5" disabled={busy || resendIn > 0} onClick={requestCode}>
                 {resendIn > 0 ? `Send a new code (${resendIn}s)` : 'Send a new code'}
@@ -241,19 +235,6 @@ export function SignUp() {
         </div>
       )}
     </Screen>
-  )
-}
-
-function MockSmsBanner({ code }: { code: string }) {
-  // Stands in for the real SMS in mock auth mode, styled like an iOS banner.
-  return (
-    <div className="fixed inset-x-0 top-[max(0.5rem,env(safe-area-inset-top))] z-[3000] flex justify-center px-3">
-      <div className="w-full max-w-[400px] rounded-2xl bg-white/95 p-4 text-black shadow-lg">
-        <p className="text-xs font-semibold uppercase text-black/50">Messages · now</p>
-        <p className="mt-1 font-medium">Your Tether code is {code}</p>
-        {AUTH_MODE === 'mock' && <p className="mt-1 text-xs text-black/50">Demo mode, no real SMS sent</p>}
-      </div>
-    </div>
   )
 }
 

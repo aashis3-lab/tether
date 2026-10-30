@@ -50,7 +50,7 @@ const LOUD_AFTER_MIN = 3
 
 /**
  * Check-in from the automatic rules, per the "Overdue arrival check-in"
- * design. Quiet at first; after 3 min (×DEMO_SPEED) it starts sounding:
+ * design. Quiet at first; after 3 min it starts sounding:
  * the server is pinging friends at the same moment.
  */
 export function CheckInOverlay({ checkIn, me }: { checkIn: CheckIn; me: Member }) {

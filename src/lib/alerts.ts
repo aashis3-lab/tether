@@ -1,5 +1,5 @@
 import { appBaseUrl } from './format'
-import { DEMO_SPEED, supabase } from './supabase'
+import { supabase } from './supabase'
 import type { Alert, AlertLevel, AlertType, CheckInResponse, Member } from './types'
 
 export interface RaiseResult {
@@ -69,14 +69,13 @@ export async function evaluateSession(sessionId: string) {
 export function escalateAlerts(sessionId: string) {
   return supabase.rpc('escalate_alerts', {
     p_session_id: sessionId,
-    p_demo_speed: DEMO_SPEED,
     p_base_url: appBaseUrl(),
   })
 }
 
-/** Rule timers in ms after DEMO_SPEED, e.g. ruleMs(2) = "2 minutes". */
+/** Rule timers in ms, e.g. ruleMs(2) = "2 minutes". */
 export function ruleMs(minutes: number) {
-  return (minutes * 60_000) / Math.max(DEMO_SPEED, 0.01)
+  return minutes * 60_000
 }
 
 export const LEVEL_TITLE: Record<AlertLevel, string> = {

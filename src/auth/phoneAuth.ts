@@ -1,45 +1,18 @@
 import { supabase } from '@/lib/supabase'
 
 /**
- * VITE_AUTH_MODE:
- *  - "sms" (default): real Supabase phone OTP (needs an SMS provider such as
- *    Twilio configured under Authentication -> Providers -> Phone).
- *  - "mock" (local development only, must be set explicitly): no SMS is sent. The app shows the code in an on-screen
- *    "incoming text" banner, and on verify signs in with a Supabase anonymous
- *    session. The phone number is stored on the profile. Requires
- *    "Allow anonymous sign-ins" in the Supabase dashboard.
+ * Real Supabase phone OTP (needs an SMS provider such as Twilio configured
+ * under Authentication -> Providers -> Phone).
  */
-export const AUTH_MODE: 'mock' | 'sms' =
-  import.meta.env.VITE_AUTH_MODE === 'mock' ? 'mock' : 'sms'
-
-/** Returns the code to display in mock mode, or null when a real SMS was sent. */
-export async function sendCode(phone: string): Promise<string | null> {
-  if (AUTH_MODE === 'mock') {
-    return String(Math.floor(100_000 + Math.random() * 900_000))
-  }
+export async function sendCode(phone: string) {
   const { error } = await supabase.auth.signInWithOtp({ phone })
   if (error) throw new Error(friendlyAuthError(error.message))
-  return null
 }
 
 /** Supabase limits one SMS per number per 60s by default. */
 export const RESEND_COOLDOWN_S = 60
 
-export async function verifyCode(phone: string, code: string, mockCode: string | null) {
-  if (AUTH_MODE === 'mock') {
-    if (code !== mockCode) throw new Error("That code doesn't match. Try again.")
-    const { data: existing } = await supabase.auth.getSession()
-    // Same number as the account already signed in on this browser -> keep it.
-    // A different number is a different person: sign the old one out first,
-    // otherwise they'd silently share one account.
-    if (existing.session) {
-      if (existing.session.user.user_metadata?.phone === phone) return
-      await supabase.auth.signOut()
-    }
-    const { error } = await supabase.auth.signInAnonymously({ options: { data: { phone } } })
-    if (error) throw error
-    return
-  }
+export async function verifyCode(phone: string, code: string) {
   const { error } = await supabase.auth.verifyOtp({ phone, token: code, type: 'sms' })
   if (error) throw new Error(friendlyAuthError(error.message))
 }
