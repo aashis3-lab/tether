@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
+import { TabScreen } from '@/components/BottomNav'
 import { Avatar } from '@/components/Avatar'
 import { GuardianSheet } from '@/components/GuardianSheet'
 import { ChevronRightIcon, QrIcon } from '@/components/icons'
 import { QrScanner } from '@/components/QrScanner'
-import { Header, ErrorText, Screen, Title, inputClass } from '@/components/ui'
+import { Header, ErrorText, Title, inputClass } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
 import { firstName, formatCode } from '@/lib/format'
 import { profileContacts } from '@/lib/profile'
@@ -80,8 +81,8 @@ export function JoinSession() {
   const host = preview ? firstName(preview.creator_name) : ''
 
   return (
-    <Screen>
-      <Header title="Join" back="/" />
+    <TabScreen>
+      <Header title="Join" />
       <Title>Join a party</Title>
 
       <label className="mt-5 block">
@@ -180,6 +181,6 @@ export function JoinSession() {
           onClose={() => setScanning(false)}
         />
       )}
-    </Screen>
+    </TabScreen>
   )
 }

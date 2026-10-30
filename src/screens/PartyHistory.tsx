@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
+import { TabScreen } from '@/components/BottomNav'
 import { SearchIcon } from '@/components/icons'
 import { PartyCard } from '@/components/PartyCard'
-import { Header, Screen } from '@/components/ui'
+import { Header } from '@/components/ui'
 import { loadActiveParty, loadHistory, partyDate, type ActiveParty, type PastParty } from '@/lib/history'
 import { formatClock } from '@/lib/time'
 import { ChevronRightIcon } from '@/components/icons'
@@ -33,8 +34,8 @@ export function PartyHistory() {
   )
 
   return (
-    <Screen>
-      <Header title="Your parties" back="/" />
+    <TabScreen>
+      <Header title="Your parties" />
       <label className="mt-4 flex min-h-[52px] items-center gap-3 rounded-2xl border border-white/10 bg-bg-card px-4">
         <SearchIcon width={18} height={18} className="text-ink-dim" />
         <input
@@ -69,6 +70,6 @@ export function PartyHistory() {
           </p>
         )}
       </div>
-    </Screen>
+    </TabScreen>
   )
 }

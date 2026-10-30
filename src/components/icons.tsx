@@ -279,3 +279,10 @@ export const UserCheckIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="M3 20c0-3.6 2.9-6 6.5-6 1.7 0 3.2.5 4.3 1.4M15.5 17.5l2 2 4-4.5" />
   </Svg>
 )
+
+export const HistoryIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}>
+    <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+    <path d="M3 3v5h5M12 7v5l3 2" />
+  </Svg>
+)
