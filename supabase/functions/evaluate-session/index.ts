@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
   const body = (await req.json().catch(() => ({}))) as {
     session_id?: string
     outbox?: boolean
-    nearby?: { lat: number; lng: number; radius?: number }
+    nearby?: { lat: number; lng: number; radius?: number; name?: string }
   }
 
   let sessions: Session[] = []
@@ -191,7 +191,10 @@ Deno.serve(async (req) => {
     uid = userData.user?.id ?? null
     if (!uid) return json({ error: 'unauthorized' }, 401)
     // Nearby venue search, proxied because Overpass rejects browser requests.
-    if (body.nearby) return json(await overpassNearby(body.nearby.lat, body.nearby.lng, body.nearby.radius ?? 2000))
+    if (body.nearby) {
+      const { lat, lng, radius, name } = body.nearby
+      return json(await overpassNearby(lat, lng, radius ?? 2000, name))
+    }
     if (body.session_id) {
       const { data: mem } = await db
         .from('session_members')
@@ -233,10 +236,19 @@ const OVERPASS_MIRRORS = [
   'https://overpass.private.coffee/api/interpreter',
 ]
 
-async function overpassNearby(lat: number, lng: number, radius: number) {
+/**
+ * Bars, pubs, clubs and restaurants near a point. With `name`, only those
+ * whose name contains it (case-insensitive), searched up to 15 km out.
+ */
+async function overpassNearby(lat: number, lng: number, radius: number, name?: string) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { places: [], error: 'bad location' }
-  const r = Math.min(Math.max(radius, 200), 5000)
-  const sel = `["amenity"~"^(bar|pub|nightclub|restaurant)$"]["name"](around:${r},${lat},${lng})`
+  const term = (name ?? '').trim().slice(0, 60)
+  const r = Math.min(Math.max(radius, 200), term ? 15_000 : 5000)
+  // Literal match: escape regex characters, then quotes/backslashes for Overpass.
+  const nameSel = term
+    ? `["name"~"${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/["\\]/g, '\\$&')}",i]`
+    : '["name"]'
+  const sel = `["amenity"~"^(bar|pub|nightclub|restaurant|biergarten|cafe)$"]${nameSel}(around:${r},${lat},${lng})`
   const q = `[out:json][timeout:15];(node${sel};way${sel};);out center 200;`
   for (const url of OVERPASS_MIRRORS) {
     const ctrl = new AbortController()

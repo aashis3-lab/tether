@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { distanceM, formatDistance } from '@/lib/geo'
 import type { Destination } from '@/lib/nightDraft'
-import { nearbyPlacesLive, placesAvailable, searchPlaces } from '@/lib/places'
+import { matchNearby, nearbyPlacesLive, placesAvailable, searchPlaces } from '@/lib/places'
 import { supabase } from '@/lib/supabase'
 import { attempt } from '@/lib/toast'
 import type { LatLng, Pin } from '@/lib/types'
@@ -43,8 +43,12 @@ export function AddPlaceSheet({
       setResults([])
       return
     }
-    const t = window.setTimeout(async () => setResults(await searchPlaces(query, near)), 300)
+    // Nearby venues with that name right away, then the full search.
+    setResults(matchNearby(query, nearby ?? []))
+    const t = window.setTimeout(async () => setResults(await searchPlaces(query, near, nearby ?? [])), 300)
     return () => window.clearTimeout(t)
+    // `nearby` filling in later shouldn't restart the search.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, near])
 
   if (chosen) {
