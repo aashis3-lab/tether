@@ -1,24 +1,22 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { TabScreen } from '@/components/BottomNav'
 import { Avatar } from '@/components/Avatar'
-import { ChevronRightIcon, GearIcon, HomeIcon, PhoneIcon, ScanIcon, ShieldIcon, UsersIcon } from '@/components/icons'
+import { ChevronRightIcon, ScanIcon, UsersIcon } from '@/components/icons'
 import { Header, Spinner } from '@/components/ui'
 import { buttonClass } from '@/components/buttons'
-import { WalletSheet } from '@/components/WalletSheet'
 import { useActiveSessionId } from '@/hooks/useSession'
 import { PartyCard } from '@/components/PartyCard'
 import { loadHistory, type PastParty } from '@/lib/history'
 import { supabase } from '@/lib/supabase'
 
-/** Home with no party running: you, start/join, party history, quick info. */
+/** Home with no party running: you, start/join, party history. */
 export function Home() {
   const { userId, profile } = useAuth()
   const { sessionId } = useActiveSessionId(userId)
   const navigate = useNavigate()
   const [history, setHistory] = useState<PastParty[] | null>(null)
-  const [wallet, setWallet] = useState(false)
 
   // A party you've checked in home from but that's still running.
   const [openParty, setOpenParty] = useState<{ id: string; name: string | null } | null>(null)
@@ -107,28 +105,6 @@ export function Home() {
           ))}
         </div>
       )}
-
-      {/* Quick info: icon tiles */}
-      <div className="mt-8 grid grid-cols-2 gap-3 pb-4">
-        <Tile icon={<ShieldIcon width={26} height={26} />} label="Safety card" onClick={() => setWallet(true)} />
-        <Tile icon={<HomeIcon width={26} height={26} />} label="Home address" onClick={() => navigate('/settings?edit=home')} />
-        <Tile icon={<PhoneIcon width={26} height={26} />} label="Contacts" onClick={() => navigate('/settings?edit=contacts')} />
-        <Tile icon={<GearIcon width={26} height={26} />} label="Settings" onClick={() => navigate('/settings')} />
-      </div>
-
-      <WalletSheet open={wallet} onClose={() => setWallet(false)} profile={profile} me={undefined} />
     </TabScreen>
-  )
-}
-
-function Tile({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-2xl bg-bg-card text-base font-semibold transition active:scale-95"
-    >
-      <span className="text-accent-orange">{icon}</span>
-      {label}
-    </button>
   )
 }
